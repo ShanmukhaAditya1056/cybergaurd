@@ -32,7 +32,6 @@ const ScoreRing = ({ score = 0, size = 140, strokeWidth = 8, showLabel = true, a
       return;
     }
 
-    let start = 0;
     const duration = 1500;
     const startTime = Date.now();
 

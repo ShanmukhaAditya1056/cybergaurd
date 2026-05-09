@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, Search, Shield, ShieldAlert, Clock, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Link, Search, ShieldAlert, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { scanPhishing, getPhishingHistory } from '../api/phishingApi';
 import ShapBar from '../components/ShapBar';
 import RiskBadge from '../components/RiskBadge';

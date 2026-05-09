@@ -29,7 +29,6 @@ const navItems = [
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const location = useLocation();
 
   const { data: scoreData } = useQuery({
     queryKey: ['navbarScore'],

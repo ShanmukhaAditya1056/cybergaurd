@@ -1,6 +1,7 @@
 const ScanResult = require('../models/ScanResult');
 const Alert = require('../models/Alert');
 const { detectPhishing } = require('../utils/phishingDetector');
+const { predictPhishing } = require('../utils/mlClient');
 
 /**
  * POST /api/phishing/scan
@@ -17,8 +18,18 @@ const scanPhishing = async (req, res) => {
       });
     }
 
-    // Run phishing detection
-    const result = detectPhishing(input);
+    // Try ML service first, fallback to rule-based detection
+    let result;
+    let modelUsed = 'rule-based';
+    
+    const mlResult = await predictPhishing(input);
+    if (mlResult) {
+      result = mlResult;
+      modelUsed = mlResult.model_used || 'ML Ensemble';
+    } else {
+      result = detectPhishing(input);
+      modelUsed = 'Rule-Based Heuristic (ML service unavailable)';
+    }
 
     // Save scan result to MongoDB
     const scanResult = await ScanResult.create({
@@ -55,6 +66,7 @@ const scanPhishing = async (req, res) => {
         shap_reasons: result.shap_reasons,
         url: result.url,
         domain: result.domain,
+        modelUsed,
         scannedAt: scanResult.createdAt
       }
     });

@@ -1,0 +1,12 @@
+{
+  "name": "cyberguard-wifi-agent",
+  "version": "1.0.0",
+  "description": "CyberGuard AI Desktop WiFi Scanner Agent",
+  "main": "scanner.js",
+  "scripts": {
+    "scan": "node scanner.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.0"
+  }
+}

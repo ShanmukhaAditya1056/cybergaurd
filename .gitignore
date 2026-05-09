@@ -26,3 +26,10 @@ Thumbs.db
 # Misc
 *.swp
 *.swo
+
+# Python
+__pycache__/
+*.pyc
+ml-service/trained_models/
+venv/
+.venv/
