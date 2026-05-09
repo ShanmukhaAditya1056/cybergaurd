@@ -1,0 +1,300 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ===== CSS CUSTOM PROPERTIES ===== */
+:root {
+  --navy-bg: #0D1B2E;
+  --navy-card: #102540;
+  --navy-border: #1A3C5E;
+  --navy-light: #152D4A;
+  --blue-accent: #2E75B6;
+  --blue-hover: #2563A0;
+  --text-white: #E8F0FA;
+  --text-muted: #8BA4C2;
+  --text-dim: #4A7AA8;
+  --safe: #4CAF82;
+  --safe-bg: #0F2E1A;
+  --warn: #F0A030;
+  --warn-bg: #2E1F05;
+  --danger: #E05555;
+  --danger-bg: #2E0A0A;
+  --critical: #FF6B6B;
+  --critical-bg: #3E0808;
+}
+
+/* ===== BASE STYLES ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--navy-bg);
+  color: var(--text-white);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== SCROLLBAR STYLES ===== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--navy-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--navy-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--blue-accent);
+}
+
+/* ===== GLASSMORPHISM CARD ===== */
+@layer components {
+  .glass-card {
+    @apply rounded-xl border border-navy-border;
+    background: rgba(16, 37, 64, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300;
+  }
+
+  .glass-card-hover:hover {
+    border-color: var(--blue-accent);
+    box-shadow: 0 0 20px rgba(46, 117, 182, 0.15);
+    transform: translateY(-2px);
+  }
+}
+
+/* ===== GRADIENT BACKGROUNDS ===== */
+.gradient-safe {
+  background: linear-gradient(135deg, var(--safe-bg), rgba(76, 175, 130, 0.1));
+}
+
+.gradient-warn {
+  background: linear-gradient(135deg, var(--warn-bg), rgba(240, 160, 48, 0.1));
+}
+
+.gradient-danger {
+  background: linear-gradient(135deg, var(--danger-bg), rgba(224, 85, 85, 0.1));
+}
+
+.gradient-critical {
+  background: linear-gradient(135deg, var(--critical-bg), rgba(255, 107, 107, 0.1));
+}
+
+.gradient-blue {
+  background: linear-gradient(135deg, rgba(46, 117, 182, 0.2), rgba(46, 117, 182, 0.05));
+}
+
+/* ===== SCORE RING ANIMATION ===== */
+.score-ring-circle {
+  transition: stroke-dashoffset 1.5s ease-out;
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+/* ===== SHAP BAR ===== */
+.shap-bar-fill {
+  transition: width 0.8s ease-out;
+}
+
+/* ===== BUTTON GLOW ===== */
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-glow::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.btn-glow:hover::after {
+  opacity: 1;
+}
+
+/* ===== PULSE DOT ===== */
+.pulse-dot {
+  position: relative;
+}
+
+.pulse-dot::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 rgba(46, 117, 182, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(46, 117, 182, 0);
+  }
+}
+
+/* ===== NAVBAR ===== */
+.nav-link {
+  @apply relative px-3 py-2 text-sm font-medium text-text-muted transition-all duration-200;
+}
+
+.nav-link:hover {
+  color: var(--text-white);
+}
+
+.nav-link.active {
+  color: var(--blue-accent);
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background: var(--blue-accent);
+  border-radius: 1px;
+}
+
+/* ===== INPUT FOCUS RING ===== */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--blue-accent) !important;
+  box-shadow: 0 0 0 3px rgba(46, 117, 182, 0.2);
+}
+
+/* ===== LOADING SHIMMER ===== */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--navy-card) 25%,
+    var(--navy-border) 50%,
+    var(--navy-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ===== PAGE TRANSITIONS ===== */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.4s ease-out;
+}
+
+/* ===== TOOLTIP ===== */
+.tooltip-container {
+  position: relative;
+}
+
+.tooltip-container:hover .tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.tooltip {
+  @apply absolute z-50 px-3 py-2 text-xs rounded-lg;
+  background: var(--navy-card);
+  border: 1px solid var(--navy-border);
+  color: var(--text-muted);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(5px);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+}
+
+/* ===== RISK BADGE STYLES ===== */
+.badge-low {
+  @apply px-3 py-1 rounded-full text-xs font-semibold;
+  background: var(--safe-bg);
+  color: var(--safe);
+  border: 1px solid rgba(76, 175, 130, 0.3);
+}
+
+.badge-medium {
+  @apply px-3 py-1 rounded-full text-xs font-semibold;
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid rgba(240, 160, 48, 0.3);
+}
+
+.badge-high {
+  @apply px-3 py-1 rounded-full text-xs font-semibold;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid rgba(224, 85, 85, 0.3);
+}
+
+.badge-critical {
+  @apply px-3 py-1 rounded-full text-xs font-semibold;
+  background: var(--critical-bg);
+  color: var(--critical);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+/* ===== RESPONSIVE UTILITIES ===== */
+@media (max-width: 768px) {
+  .mobile-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .mobile-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
