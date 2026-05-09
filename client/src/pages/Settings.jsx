@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useMutation } from '@tanstack/react-query';
 import {
   Settings as SettingsIcon, Shield, Lock, Trash2, Bell, Clipboard, Clock,
-  CheckCircle, Award, Info, ExternalLink, AlertTriangle
+  CheckCircle, Award, Info, AlertTriangle
 } from 'lucide-react';
 import { clearAllScans } from '../api/dashboardApi';
 import toast from 'react-hot-toast';
@@ -96,8 +96,8 @@ const Settings = () => {
           <div className="space-y-4">
             {/* Real-time Alerts */}
             <div className="flex items-center justify-between p-4 rounded-lg bg-navy border border-navy-border">
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-text-dim" />
+              <div className="flex items-center gap-3 min-w-0">
+                <Bell className="w-5 h-5 text-text-dim flex-shrink-0" />
                 <div>
                   <p className="text-text-white text-sm font-medium">Real-time Alerts</p>
                   <p className="text-text-dim text-xs">Get notified instantly about security threats</p>
@@ -105,20 +105,20 @@ const Settings = () => {
               </div>
               <button
                 onClick={() => setRealTimeAlerts(!realTimeAlerts)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
+                className={`inline-flex items-center flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
                   realTimeAlerts ? 'bg-safe' : 'bg-navy-border'
                 }`}
               >
-                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                  realTimeAlerts ? 'translate-x-6' : 'translate-x-0.5'
+                <span className={`inline-block w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  realTimeAlerts ? 'translate-x-6' : 'translate-x-1'
                 }`} />
               </button>
             </div>
 
             {/* Clipboard Scanner */}
             <div className="flex items-center justify-between p-4 rounded-lg bg-navy border border-navy-border">
-              <div className="flex items-center gap-3">
-                <Clipboard className="w-5 h-5 text-text-dim" />
+              <div className="flex items-center gap-3 min-w-0">
+                <Clipboard className="w-5 h-5 text-text-dim flex-shrink-0" />
                 <div>
                   <p className="text-text-white text-sm font-medium">Clipboard Scanner</p>
                   <p className="text-text-dim text-xs">Automatically scan copied URLs for phishing</p>
@@ -126,12 +126,12 @@ const Settings = () => {
               </div>
               <button
                 onClick={() => setClipboardScanner(!clipboardScanner)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
+                className={`inline-flex items-center flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
                   clipboardScanner ? 'bg-safe' : 'bg-navy-border'
                 }`}
               >
-                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                  clipboardScanner ? 'translate-x-6' : 'translate-x-0.5'
+                <span className={`inline-block w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                  clipboardScanner ? 'translate-x-6' : 'translate-x-1'
                 }`} />
               </button>
             </div>
@@ -262,20 +262,37 @@ const Settings = () => {
             <AlertTriangle className="w-5 h-5 text-danger" />
             Danger Zone
           </h2>
-          <div className="p-4 rounded-lg border border-danger/20 bg-danger-bg/30">
-            <p className="text-text-white text-sm font-medium mb-1">Clear All Scan History</p>
-            <p className="text-text-dim text-xs mb-3">
-              This will permanently delete all scan results, alerts, and breach logs from the database. 
-              This action cannot be undone.
-            </p>
+          <div className="flex items-center justify-between gap-4 p-4 rounded-lg border border-danger/20 bg-danger-bg/30">
+            <div className="min-w-0">
+              <p className="text-text-white text-sm font-medium mb-1">Clear All Scan History</p>
+              <p className="text-text-dim text-xs">
+                Permanently delete all scan results, alerts, and breach logs. This action cannot be undone.
+              </p>
+            </div>
             <button
               onClick={() => {
-                if (window.confirm('Are you sure you want to clear all scan history? This cannot be undone.')) {
-                  clearMutation.mutate();
-                }
+                toast((t) => (
+                  <div className="flex flex-col gap-3 max-w-sm">
+                    <p className="text-sm font-medium text-gray-900">Are you sure you want to clear all scan history? This cannot be undone.</p>
+                    <div className="flex gap-2 justify-end mt-2">
+                      <button 
+                        onClick={() => toast.dismiss(t.id)} 
+                        className="px-4 py-2 text-xs font-semibold rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={() => { clearMutation.mutate(); toast.dismiss(t.id); }} 
+                        className="px-4 py-2 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all"
+                      >
+                        Yes, Clear
+                      </button>
+                    </div>
+                  </div>
+                ), { duration: 6000, position: 'top-center' });
               }}
               disabled={clearMutation.isPending}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-danger/20 text-danger hover:bg-danger/30 transition-colors disabled:opacity-50"
+              className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-danger/20 text-danger border border-danger/30 hover:bg-danger/30 transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
               {clearMutation.isPending ? 'Clearing...' : 'Clear All History'}

@@ -117,26 +117,43 @@ body {
   transition: width 0.8s ease-out;
 }
 
-/* ===== BUTTON GLOW ===== */
+/* ===== BUTTON STYLES & GLOW ===== */
 .btn-glow {
   position: relative;
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(0);
+}
+
+.btn-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -6px rgba(46, 117, 182, 0.5);
+}
+
+.btn-glow:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 10px -4px rgba(46, 117, 182, 0.4);
 }
 
 .btn-glow::after {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity 0.3s;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  transform: skewX(-20deg);
+  transition: all 0.5s ease;
 }
 
 .btn-glow:hover::after {
-  opacity: 1;
+  left: 150%;
 }
 
 /* ===== PULSE DOT ===== */

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, Phone, Shield, ShieldAlert, AlertTriangle, CheckCircle, Clock, Eye, EyeOff, Hash } from 'lucide-react';
+import { Lock, Mail, Phone, Shield, ShieldAlert, AlertTriangle, CheckCircle, Clock, Hash } from 'lucide-react';
 import { checkBreach, getBreachHistory } from '../api/breachApi';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';

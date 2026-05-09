@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Trash2, Check, Filter, AlertTriangle, CheckCircle, XCircle, Info, Shield } from 'lucide-react';
+import { Bell, Trash2, Check, AlertTriangle, CheckCircle, XCircle, Info, Shield } from 'lucide-react';
 import { getAlerts, markAlertAsRead, deleteAlert } from '../api/alertApi';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';

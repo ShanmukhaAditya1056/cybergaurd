@@ -151,12 +151,12 @@ const WifiScanner = () => {
                 <button
                   type="button"
                   onClick={() => setIsPublic(!isPublic)}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                  className={`inline-flex items-center flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
                     isPublic ? 'bg-warn' : 'bg-navy-border'
                   }`}
                 >
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                    isPublic ? 'translate-x-6' : 'translate-x-0.5'
+                  <span className={`inline-block w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    isPublic ? 'translate-x-6' : 'translate-x-1'
                   }`} />
                 </button>
               </div>
@@ -165,12 +165,12 @@ const WifiScanner = () => {
                 <button
                   type="button"
                   onClick={() => setHasPassword(!hasPassword)}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                  className={`inline-flex items-center flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
                     hasPassword ? 'bg-safe' : 'bg-navy-border'
                   }`}
                 >
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                    hasPassword ? 'translate-x-6' : 'translate-x-0.5'
+                  <span className={`inline-block w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    hasPassword ? 'translate-x-6' : 'translate-x-1'
                   }`} />
                 </button>
               </div>

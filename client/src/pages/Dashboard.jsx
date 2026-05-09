@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Link as LinkIcon, Smartphone, Lock, Wifi, Shield, Zap, TrendingUp, Bell } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { getSecurityScore, getDashboardStats } from '../api/dashboardApi';
 import { scanMalware } from '../api/malwareApi';
 import { getAlerts } from '../api/alertApi';
@@ -61,7 +61,6 @@ const Dashboard = () => {
   }
 
   const score = scoreData?.data?.score ?? 0;
-  const level = scoreData?.data?.level ?? 'CRITICAL';
   const breakdown = scoreData?.data?.breakdown ?? {};
   const history = scoreData?.data?.history ?? [];
   const stats = statsData?.data ?? {};
