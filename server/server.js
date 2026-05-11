@@ -2,13 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
-const connectDB = require('./config/db');
+const { connectDB, getMongoStatus } = require('./config/db');
 
 // Load environment variables
 dotenv.config();
-
-// Connect to MongoDB
-connectDB();
 
 const app = express();
 
@@ -45,6 +42,7 @@ app.get('/api/health', (req, res) => {
     success: true,
     message: 'CyberGuard AI API is running',
     version: '2.0.0',
+    mongoConnected: getMongoStatus(),
     timestamp: new Date().toISOString()
   });
 });
@@ -70,9 +68,19 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 CyberGuard AI Server running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV}`);
-});
+// Start server (connect to MongoDB first, then listen)
+const startServer = async () => {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`\n🚀 CyberGuard AI Server running on port ${PORT}`);
+    console.log(`📡 Environment: ${process.env.NODE_ENV}`);
+    console.log(`🗄️  MongoDB: ${getMongoStatus() ? 'Connected' : 'In-Memory Fallback'}`);
+    console.log(`🧠 ML Service: ${process.env.ML_SERVICE_URL || 'http://localhost:8000'}`);
+    console.log(`🌐 Client: http://localhost:3000\n`);
+  });
+};
+
+startServer();
 
 module.exports = app;
