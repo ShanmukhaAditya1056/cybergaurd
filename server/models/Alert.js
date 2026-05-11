@@ -1,4 +1,6 @@
 const mongoose = require('mongoose');
+const { getMongoStatus } = require('../config/db');
+const { getCollection } = require('../utils/memoryStore');
 
 const alertSchema = new mongoose.Schema({
   type: {
@@ -32,4 +34,18 @@ const alertSchema = new mongoose.Schema({
 
 alertSchema.index({ createdAt: -1 });
 
-module.exports = mongoose.model('Alert', alertSchema);
+const MongoModel = mongoose.model('Alert', alertSchema);
+const memoryFallback = getCollection('Alert');
+
+const Alert = new Proxy(MongoModel, {
+  get(target, prop) {
+    const store = getMongoStatus() ? target : memoryFallback;
+    const value = store[prop];
+    if (typeof value === 'function') {
+      return value.bind(store);
+    }
+    return value;
+  }
+});
+
+module.exports = Alert;
