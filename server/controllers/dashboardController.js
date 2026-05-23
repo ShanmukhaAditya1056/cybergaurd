@@ -1,7 +1,6 @@
 const ScanResult = require('../models/ScanResult');
 const Alert = require('../models/Alert');
 const BreachLog = require('../models/BreachLog');
-const { APPS } = require('../utils/malwareAnalyzer');
 const {
   calculateUnifiedScore,
   calculatePhishingScore,

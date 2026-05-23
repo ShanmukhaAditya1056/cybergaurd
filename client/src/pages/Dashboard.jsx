@@ -1,11 +1,13 @@
 import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Link as LinkIcon, Smartphone, Lock, Wifi, Shield, Zap, TrendingUp, Bell } from 'lucide-react';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { getSecurityScore, getDashboardStats } from '../api/dashboardApi';
-import { scanMalware } from '../api/malwareApi';
-import { getAlerts } from '../api/alertApi';
+import {
+  useGetSecurityScoreQuery,
+  useGetDashboardStatsQuery,
+  useGetAlertsQuery,
+  useScanMalwareMutation,
+} from '../store/api/apiSlice';
 import ScoreRing from '../components/ScoreRing';
 import ModuleCard from '../components/ModuleCard';
 import ThreatCard from '../components/ThreatCard';
@@ -24,48 +26,37 @@ const itemVariants = {
 };
 
 const Dashboard = () => {
-  const queryClient = useQueryClient();
-
-  const { data: scoreData, isLoading: scoreLoading } = useQuery({
-    queryKey: ['securityScore'],
-    queryFn: getSecurityScore,
-    refetchInterval: 30000
+  const { data: scoreData, isLoading: scoreLoading } = useGetSecurityScoreQuery(undefined, {
+    pollingInterval: 30000,
   });
 
-  const { data: statsData, isLoading: statsLoading } = useQuery({
-    queryKey: ['dashboardStats'],
-    queryFn: getDashboardStats,
-    refetchInterval: 30000
+  const { data: statsData, isLoading: statsLoading } = useGetDashboardStatsQuery(undefined, {
+    pollingInterval: 30000,
   });
 
-  const { data: alertsData } = useQuery({
-    queryKey: ['recentAlerts'],
-    queryFn: () => getAlerts(),
-  });
+  const { data: alertsData } = useGetAlertsQuery();
 
-  const quickScanMutation = useMutation({
-    mutationFn: scanMalware,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['securityScore']);
-      queryClient.invalidateQueries(['dashboardStats']);
-      queryClient.invalidateQueries(['recentAlerts']);
+  const [triggerQuickScan, { isLoading: quickScanLoading }] = useScanMalwareMutation();
+
+  const handleQuickScan = async () => {
+    try {
+      await triggerQuickScan().unwrap();
       toast.success('Quick scan completed!');
-    },
-    onError: (error) => {
-      toast.error(error?.response?.data?.message || 'Scan failed');
+    } catch (error) {
+      toast.error(error?.data?.message || 'Scan failed');
     }
-  });
+  };
 
   if (scoreLoading || statsLoading) {
     return <LoadingSpinner fullPage text="Loading security dashboard..." />;
   }
 
-  const score = scoreData?.data?.score ?? 0;
-  const breakdown = scoreData?.data?.breakdown ?? {};
-  const history = scoreData?.data?.history ?? [];
-  const stats = statsData?.data ?? {};
+  const score = scoreData?.score ?? 0;
+  const breakdown = scoreData?.breakdown ?? {};
+  const history = scoreData?.history ?? [];
+  const stats = statsData ?? {};
   const modules = stats.modules ?? {};
-  const recentAlerts = (alertsData?.data ?? []).slice(0, 5);
+  const recentAlerts = (alertsData ?? []).slice(0, 5);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -197,12 +188,12 @@ const Dashboard = () => {
         {/* Quick Scan Button */}
         <motion.div variants={itemVariants} className="mb-8">
           <button
-            onClick={() => quickScanMutation.mutate()}
-            disabled={quickScanMutation.isPending}
+            onClick={() => handleQuickScan()}
+            disabled={quickScanLoading}
             className="w-full sm:w-auto bg-blue-accent hover:bg-blue-600 text-white font-semibold rounded-xl px-8 py-3.5 transition-all duration-300 btn-glow flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Zap className="w-5 h-5" />
-            {quickScanMutation.isPending ? 'Scanning...' : 'Quick Security Scan'}
+            {quickScanLoading ? 'Scanning...' : 'Quick Security Scan'}
           </button>
         </motion.div>
 

@@ -1,10 +1,12 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Provider } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
 import { AnimatePresence } from 'framer-motion';
-import { SecurityProvider } from './context/SecurityContext';
+import store from './store/store';
 import Navbar from './components/Navbar';
+import CookieConsent from './components/CookieConsent';
+import PermissionsGate from './components/PermissionsGate';
 import Dashboard from './pages/Dashboard';
 import PhishingScanner from './pages/PhishingScanner';
 import MalwareScanner from './pages/MalwareScanner';
@@ -13,21 +15,11 @@ import WifiScanner from './pages/WifiScanner';
 import Alerts from './pages/Alerts';
 import Settings from './pages/Settings';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 30000,
-    },
-  },
-});
-
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <SecurityProvider>
-        <Router>
+    <Provider store={store}>
+      <Router>
+        <PermissionsGate>
           <div className="min-h-screen bg-navy font-inter">
             <Navbar />
             <Toaster
@@ -66,9 +58,12 @@ function App() {
               </Routes>
             </AnimatePresence>
           </div>
-        </Router>
-      </SecurityProvider>
-    </QueryClientProvider>
+        </PermissionsGate>
+
+        {/* Cookie consent — shows on top of everything */}
+        <CookieConsent />
+      </Router>
+    </Provider>
   );
 }
 

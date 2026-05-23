@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, Search, ShieldAlert, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { scanPhishing, getPhishingHistory } from '../api/phishingApi';
+import { useScanPhishingMutation, useGetPhishingHistoryQuery } from '../store/api/apiSlice';
 import ShapBar from '../components/ShapBar';
 import RiskBadge from '../components/RiskBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -17,41 +16,31 @@ const pageVariants = {
 const PhishingScanner = () => {
   const [inputValue, setInputValue] = useState('');
   const [scanResult, setScanResult] = useState(null);
-  const queryClient = useQueryClient();
 
-  const { data: historyData, isLoading: historyLoading } = useQuery({
-    queryKey: ['phishingHistory'],
-    queryFn: getPhishingHistory,
-  });
+  const { data: historyData, isLoading: historyLoading } = useGetPhishingHistoryQuery();
 
-  const scanMutation = useMutation({
-    mutationFn: (input) => scanPhishing(input),
-    onSuccess: (data) => {
-      setScanResult(data.data);
-      queryClient.invalidateQueries(['phishingHistory']);
-      queryClient.invalidateQueries(['securityScore']);
-      queryClient.invalidateQueries(['navbarScore']);
-      if (data.data.verdict === 'PHISHING') {
-        toast.error('⚠️ Phishing detected!');
-      } else {
-        toast.success('✅ URL appears safe');
-      }
-    },
-    onError: (error) => {
-      toast.error(error?.response?.data?.message || 'Scan failed');
-    }
-  });
+  const [triggerScan, { isLoading: isScanning }] = useScanPhishingMutation();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) {
       toast.error('Please enter a URL or message to scan');
       return;
     }
-    scanMutation.mutate(inputValue);
+    try {
+      const data = await triggerScan(inputValue).unwrap();
+      setScanResult(data);
+      if (data.verdict === 'PHISHING') {
+        toast.error('⚠️ Phishing detected!');
+      } else {
+        toast.success('✅ URL appears safe');
+      }
+    } catch (error) {
+      toast.error(error?.data?.message || 'Scan failed');
+    }
   };
 
-  const history = historyData?.data ?? [];
+  const history = historyData ?? [];
 
   return (
     <motion.div
@@ -91,24 +80,24 @@ const PhishingScanner = () => {
               />
               <button
                 type="submit"
-                disabled={scanMutation.isPending}
+                disabled={isScanning}
                 className="bg-blue-accent hover:bg-blue-600 text-white font-semibold rounded-lg px-6 py-3 transition-all duration-300 btn-glow flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap"
               >
                 <Search className="w-4 h-4" />
-                {scanMutation.isPending ? 'Scanning...' : 'Scan Now'}
+                {isScanning ? 'Scanning...' : 'Scan Now'}
               </button>
             </div>
           </form>
         </div>
 
         {/* Loading State */}
-        {scanMutation.isPending && (
+        {isScanning && (
           <LoadingSpinner text="Analyzing URL with AI..." />
         )}
 
         {/* Scan Result */}
         <AnimatePresence mode="wait">
-          {scanResult && !scanMutation.isPending && (
+          {scanResult && !isScanning && (
             <motion.div
               key="result"
               initial={{ opacity: 0, y: 20 }}

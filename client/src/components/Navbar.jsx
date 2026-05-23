@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Shield,
@@ -14,7 +13,7 @@ import {
   X,
   Activity
 } from 'lucide-react';
-import { getSecurityScore } from '../api/dashboardApi';
+import { useGetSecurityScoreQuery } from '../store/api/apiSlice';
 import ScoreRing from './ScoreRing';
 
 const navItems = [
@@ -30,15 +29,12 @@ const navItems = [
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const { data: scoreData } = useQuery({
-    queryKey: ['navbarScore'],
-    queryFn: getSecurityScore,
-    refetchInterval: 30000,
-    staleTime: 15000,
+  const { data: scoreData } = useGetSecurityScoreQuery(undefined, {
+    pollingInterval: 30000,
   });
 
-  const score = scoreData?.data?.score ?? null;
-  const level = scoreData?.data?.level ?? null;
+  const score = scoreData?.score ?? null;
+  const level = scoreData?.level ?? null;
 
   const getScoreColor = () => {
     if (!level) return 'text-text-muted';

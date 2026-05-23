@@ -1,5 +1,6 @@
 const ScanResult = require('../models/ScanResult');
 const Alert = require('../models/Alert');
+const { scanWifi } = require('../utils/deviceScanner');
 
 /**
  * Calculate WiFi trust score based on network parameters
@@ -202,7 +203,92 @@ const getWifiHistory = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/wifi/auto-scan
+ * Auto-detect WiFi network from the system and analyze
+ */
+const autoScanWifi = async (req, res) => {
+  try {
+    const wifiInfo = await scanWifi();
+
+    if (!wifiInfo.available) {
+      return res.status(400).json({
+        success: false,
+        message: wifiInfo.error || 'Could not detect WiFi network. Make sure WiFi is connected.',
+      });
+    }
+
+    // Run trust score calculation on real data
+    const result = calculateTrustScore(
+      wifiInfo.encryption,
+      wifiInfo.isPublic,
+      wifiInfo.hasPassword
+    );
+
+    // Save scan result
+    const scanResult = await ScanResult.create({
+      type: 'wifi',
+      input: wifiInfo.ssid,
+      verdict: result.risk_level,
+      score: result.trust_score,
+      confidence: 95,
+      details: {
+        ssid: wifiInfo.ssid,
+        encryption: wifiInfo.encryption,
+        authentication: wifiInfo.authentication,
+        cipher: wifiInfo.cipher,
+        signal: wifiInfo.signal,
+        radioType: wifiInfo.radioType,
+        channel: wifiInfo.channel,
+        bssid: wifiInfo.bssid,
+        band: wifiInfo.band,
+        isPublic: wifiInfo.isPublic,
+        hasPassword: wifiInfo.hasPassword,
+        checks: result.checks,
+        recommendations: result.recommendations,
+        risk_level: result.risk_level,
+        autoDetected: true,
+      },
+    });
+
+    // Create alert for risky networks
+    if (result.risk_level === 'HIGH' || result.risk_level === 'CRITICAL') {
+      await Alert.create({
+        type: result.risk_level === 'CRITICAL' ? 'CRITICAL' : 'WARNING',
+        title: `Insecure Wi-Fi Network: ${wifiInfo.ssid}`,
+        description: `Network "${wifiInfo.ssid}" scored ${result.trust_score}/100 (${result.risk_level} risk). ${result.recommendations[0]}`,
+        module: 'WiFi Scanner',
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: scanResult._id,
+        ssid: wifiInfo.ssid,
+        encryption: wifiInfo.encryption,
+        authentication: wifiInfo.authentication,
+        cipher: wifiInfo.cipher,
+        signal: wifiInfo.signal,
+        radioType: wifiInfo.radioType,
+        channel: wifiInfo.channel,
+        bssid: wifiInfo.bssid,
+        band: wifiInfo.band,
+        trust_score: result.trust_score,
+        risk_level: result.risk_level,
+        checks: result.checks,
+        recommendations: result.recommendations,
+        autoDetected: true,
+        scannedAt: scanResult.createdAt,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   analyzeWifi,
-  getWifiHistory
+  getWifiHistory,
+  autoScanWifi,
 };
