@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Mail, Phone, Shield, ShieldAlert, AlertTriangle, CheckCircle, Clock, Hash } from 'lucide-react';
-import { checkBreach, getBreachHistory } from '../api/breachApi';
+import { useCheckBreachMutation, useGetBreachHistoryQuery } from '../store/api/apiSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -16,43 +15,33 @@ const BreachMonitor = () => {
   const [activeTab, setActiveTab] = useState('email');
   const [inputValue, setInputValue] = useState('');
   const [breachResult, setBreachResult] = useState(null);
-  const queryClient = useQueryClient();
 
-  const { data: historyData } = useQuery({
-    queryKey: ['breachHistory'],
-    queryFn: getBreachHistory,
-  });
+  const { data: historyData } = useGetBreachHistoryQuery();
 
-  const checkMutation = useMutation({
-    mutationFn: ({ input, type }) => checkBreach(input, type),
-    onSuccess: (data) => {
-      setBreachResult(data.data);
-      queryClient.invalidateQueries(['breachHistory']);
-      queryClient.invalidateQueries(['securityScore']);
-      queryClient.invalidateQueries(['navbarScore']);
-      if (!data.data.apiUsed) {
-        toast.error('⚠️ Breach database was unreachable. Please try again later.');
-      } else if (data.data.breachFound) {
-        toast.error(`⚠️ Found in ${data.data.breachCount} breach occurrence${data.data.breachCount > 1 ? 's' : ''}!`);
-      } else {
-        toast.success('✅ No breaches found');
-      }
-    },
-    onError: (error) => {
-      toast.error(error?.response?.data?.message || 'Check failed');
-    }
-  });
+  const [triggerCheck, { isLoading: isChecking }] = useCheckBreachMutation();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) {
       toast.error(`Please enter ${activeTab === 'email' ? 'an email address' : 'a phone number'}`);
       return;
     }
-    checkMutation.mutate({ input: inputValue, type: activeTab });
+    try {
+      const data = await triggerCheck({ input: inputValue, type: activeTab }).unwrap();
+      setBreachResult(data);
+      if (!data.apiUsed) {
+        toast.error('⚠️ Breach database was unreachable. Please try again later.');
+      } else if (data.breachFound) {
+        toast.error(`⚠️ Found in ${data.breachCount} breach occurrence${data.breachCount > 1 ? 's' : ''}!`);
+      } else {
+        toast.success('✅ No breaches found');
+      }
+    } catch (error) {
+      toast.error(error?.data?.message || 'Check failed');
+    }
   };
 
-  const history = historyData?.data ?? [];
+  const history = historyData ?? [];
 
   const formatNumber = (num) => {
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -132,22 +121,22 @@ const BreachMonitor = () => {
               />
               <button
                 type="submit"
-                disabled={checkMutation.isPending}
+                disabled={isChecking}
                 className="bg-blue-accent hover:bg-blue-600 text-white font-semibold rounded-lg px-6 py-3 transition-all duration-300 btn-glow flex items-center justify-center gap-2 disabled:opacity-50 whitespace-nowrap"
               >
                 <Shield className="w-4 h-4" />
-                {checkMutation.isPending ? 'Checking...' : 'Check Breach'}
+                {isChecking ? 'Checking...' : 'Check Breach'}
               </button>
             </div>
           </form>
         </div>
 
         {/* Loading */}
-        {checkMutation.isPending && <LoadingSpinner text="Checking breach databases..." />}
+        {isChecking && <LoadingSpinner text="Checking breach databases..." />}
 
         {/* Breach Result */}
         <AnimatePresence mode="wait">
-          {breachResult && !checkMutation.isPending && (
+          {breachResult && !isChecking && (
             <motion.div
               key="breach-result"
               initial={{ opacity: 0, y: 20 }}

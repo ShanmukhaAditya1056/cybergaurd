@@ -35,6 +35,10 @@ const RiskBadge = ({ risk, size = 'md' }) => {
     NONE: {
       className: 'bg-safe-bg text-safe border border-safe/30',
       label: 'NONE'
+    },
+    UNKNOWN: {
+      className: 'bg-navy-card text-text-dim border border-navy-border',
+      label: 'NOT SCANNED'
     }
   };
 

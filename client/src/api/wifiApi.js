@@ -7,6 +7,11 @@ export const analyzeWifi = async (data) => {
   return response.data;
 };
 
+export const autoScanWifi = async () => {
+  const response = await axios.post(`${API_URL}/wifi/auto-scan`);
+  return response.data;
+};
+
 export const getWifiHistory = async () => {
   const response = await axios.get(`${API_URL}/wifi/history`);
   return response.data;

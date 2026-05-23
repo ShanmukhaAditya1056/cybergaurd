@@ -8,18 +8,43 @@ const SUSPICIOUS_KEYWORDS = [
   'upi-reward', 'claim-prize', 'secure-hdfc', 'sbi-alert', 'paytm-verify',
   'free-jio', 'win-prize', 'trai-notice', 'account-suspended', 'urgent-action',
   'click-now', 'limited-time', 'expire-today', 'verify-account', 'update-kyc',
-  'reward-claim', 'lucky-winner'
+  'reward-claim', 'lucky-winner', 'confirm-identity', 'reset-password',
+  'login', 'signin', 'sign-in', 'password', 'credential',
+  'verify', 'validate', 'confirm', 'secure', 'update',
+  'account', 'banking', 'payment', 'wallet', 'transfer',
+  'suspend', 'blocked', 'unauthorized', 'unusual-activity',
+  'refund', 'cashback', 'offer', 'free', 'prize', 'winner',
+  'click-here', 'act-now', 'immediate', 'urgently',
 ];
 
 const SUSPICIOUS_TLDS = [
-  '.xyz', '.tk', '.ml', '.ga', '.cf', '.click', '.top', '.work', '.loan', '.gq', '.pw'
+  '.xyz', '.tk', '.ml', '.ga', '.cf', '.click', '.top', '.work',
+  '.loan', '.gq', '.pw', '.buzz', '.icu', '.cam', '.rest',
+  '.monster', '.fit', '.surf', '.bar', '.space', '.site',
+];
+
+// Well-known brands that phishers impersonate
+const BRAND_NAMES = [
+  'google', 'facebook', 'apple', 'microsoft', 'amazon', 'netflix',
+  'paypal', 'instagram', 'whatsapp', 'telegram', 'twitter', 'linkedin',
+  'sbi', 'hdfc', 'icici', 'axis', 'paytm', 'phonepe', 'gpay',
+  'flipkart', 'snapdeal', 'myntra', 'zomato', 'swiggy', 'ola', 'uber',
+  'yahoo', 'outlook', 'gmail', 'hotmail', 'dropbox', 'adobe',
+  'chase', 'wellsfargo', 'citibank', 'bankofamerica',
 ];
 
 const SAFE_DOMAINS = [
   'google.com', 'paytm.com', 'phonepe.com', 'gpay.com', 'npci.org.in',
   'sbi.co.in', 'hdfcbank.com', 'icicibank.com', 'axisbank.com', 'amazon.in',
   'flipkart.com', 'jio.com', 'airtel.in', 'bsnl.co.in', 'incometax.gov.in',
-  'uidai.gov.in'
+  'uidai.gov.in', 'facebook.com', 'instagram.com', 'twitter.com', 'x.com',
+  'linkedin.com', 'github.com', 'stackoverflow.com', 'reddit.com',
+  'apple.com', 'microsoft.com', 'amazon.com', 'netflix.com', 'youtube.com',
+  'whatsapp.com', 'telegram.org', 'wikipedia.org', 'mozilla.org',
+  'paypal.com', 'stripe.com', 'spotify.com', 'zoom.us',
+  'yahoo.com', 'outlook.com', 'live.com', 'office.com',
+  'dropbox.com', 'adobe.com', 'cloudflare.com',
+  'gmail.com', 'mail.google.com',
 ];
 
 /**
@@ -163,7 +188,7 @@ const detectPhishing = (input) => {
   }
 
   // Additional: Check for URL shortener patterns
-  const shorteners = ['bit.ly', 'tinyurl', 'goo.gl', 't.co', 'short.link'];
+  const shorteners = ['bit.ly', 'tinyurl', 'goo.gl', 't.co', 'short.link', 'is.gd', 'rb.gy', 'cutt.ly'];
   const hasShortener = shorteners.some(s => lowerUrl.includes(s));
   if (hasShortener) {
     suspicionScore += 15;
@@ -173,6 +198,61 @@ const detectPhishing = (input) => {
       direction: 'warning',
       description: 'Shortened URL may hide malicious destination'
     });
+  }
+
+  // Rule 8: Check for brand impersonation in domain
+  if (domain) {
+    const domainParts = domain.split('.');
+    const mainDomain = domainParts.length >= 2 ? domainParts[domainParts.length - 2] : domain;
+    for (const brand of BRAND_NAMES) {
+      // Check if brand appears in subdomain but NOT as the main domain
+      if (domain.includes(brand) && !mainDomain.includes(brand)) {
+        suspicionScore += 35;
+        shapReasons.push({
+          feature: 'Brand Impersonation',
+          score: 0.78,
+          direction: 'danger',
+          description: `"${brand}" appears in subdomain — likely impersonation attempt`
+        });
+        break;
+      }
+      // Check if brand is in domain but misspelled (e.g., gooogle, amaz0n)
+      if (mainDomain.includes(brand) && !SAFE_DOMAINS.some(sd => domain.endsWith(sd))) {
+        suspicionScore += 30;
+        shapReasons.push({
+          feature: 'Potential Brand Mimicry',
+          score: 0.70,
+          direction: 'danger',
+          description: `Domain contains "${brand}" but is not the official site`
+        });
+        break;
+      }
+    }
+  }
+
+  // Rule 9: HTTP without S (no SSL)
+  if (lowerUrl.startsWith('http://') && !lowerUrl.startsWith('http://localhost')) {
+    suspicionScore += 10;
+    shapReasons.push({
+      feature: 'No SSL/HTTPS',
+      score: 0.30,
+      direction: 'warning',
+      description: 'URL uses insecure HTTP — legitimate sites use HTTPS'
+    });
+  }
+
+  // Rule 10: Unusual subdomain depth
+  if (domain) {
+    const subdomainCount = domain.split('.').length - 2;
+    if (subdomainCount >= 3) {
+      suspicionScore += 15;
+      shapReasons.push({
+        feature: 'Deep Subdomain',
+        score: 0.40,
+        direction: 'warning',
+        description: `Domain has ${subdomainCount} subdomain levels — used to hide real destination`
+      });
+    }
   }
 
   // Calculate final results
@@ -208,5 +288,6 @@ module.exports = {
   detectPhishing,
   SUSPICIOUS_KEYWORDS,
   SUSPICIOUS_TLDS,
-  SAFE_DOMAINS
+  SAFE_DOMAINS,
+  BRAND_NAMES
 };

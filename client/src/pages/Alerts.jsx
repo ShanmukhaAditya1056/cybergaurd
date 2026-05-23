@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Trash2, Check, AlertTriangle, CheckCircle, XCircle, Info, Shield } from 'lucide-react';
-import { getAlerts, markAlertAsRead, deleteAlert } from '../api/alertApi';
+import { Bell, Trash2, Check, AlertTriangle, CheckCircle, XCircle, Info, Shield, ExternalLink } from 'lucide-react';
+import { useGetAlertsQuery, useMarkAlertAsReadMutation, useDeleteAlertMutation } from '../store/api/apiSlice';
+import { setFilter, toggleExpandAlert } from '../store/slices/alertsSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -14,38 +16,44 @@ const pageVariants = {
 
 const FILTER_TYPES = ['All', 'CRITICAL', 'WARNING', 'SAFE', 'INFO'];
 
+// Map module names to routes
+const MODULE_ROUTES = {
+  'Phishing Scanner': '/phishing',
+  'Device Scanner': '/malware',
+  'WiFi Scanner': '/wifi',
+  'Breach Monitor': '/breach',
+  'Malware Scanner': '/malware',
+};
+
 const Alerts = () => {
-  const [activeFilter, setActiveFilter] = useState('All');
-  const [expandedAlert, setExpandedAlert] = useState(null);
-  const queryClient = useQueryClient();
+  const dispatch = useDispatch();
+  const { activeFilter, expandedAlert } = useSelector((state) => state.alerts);
+  const navigate = useNavigate();
 
-  const { data: alertsData, isLoading } = useQuery({
-    queryKey: ['alerts', activeFilter],
-    queryFn: () => getAlerts(activeFilter),
-  });
+  const { data: alertsData, isLoading } = useGetAlertsQuery(activeFilter);
 
-  const markReadMutation = useMutation({
-    mutationFn: markAlertAsRead,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['alerts']);
-      queryClient.invalidateQueries(['navbarScore']);
+  const [triggerMarkRead] = useMarkAlertAsReadMutation();
+  const [triggerDelete] = useDeleteAlertMutation();
+
+  const handleMarkRead = async (id) => {
+    try {
+      await triggerMarkRead(id).unwrap();
       toast.success('Alert marked as read');
-    }
-  });
+    } catch { /* silently fail */ }
+  };
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteAlert,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['alerts']);
+  const handleDelete = async (id) => {
+    try {
+      await triggerDelete(id).unwrap();
       toast.success('Alert deleted');
-    }
-  });
+    } catch { /* silently fail */ }
+  };
 
   if (isLoading) {
     return <LoadingSpinner fullPage text="Loading alerts..." />;
   }
 
-  const alerts = alertsData?.data ?? [];
+  const alerts = alertsData ?? [];
 
   const getAlertIcon = (type) => {
     switch (type) {
@@ -87,6 +95,13 @@ const Alerts = () => {
     }
   };
 
+  const handleGoToModule = (module) => {
+    const route = MODULE_ROUTES[module];
+    if (route) {
+      navigate(route);
+    }
+  };
+
   return (
     <motion.div
       variants={pageVariants}
@@ -114,7 +129,7 @@ const Alerts = () => {
           {FILTER_TYPES.map((type) => (
             <button
               key={type}
-              onClick={() => setActiveFilter(type)}
+              onClick={() => dispatch(setFilter(type))}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap border ${
                 activeFilter === type
                   ? getFilterColor(type)
@@ -143,7 +158,7 @@ const Alerts = () => {
                 >
                   <div
                     className="flex items-start gap-3 cursor-pointer"
-                    onClick={() => setExpandedAlert(expandedAlert === alert._id ? null : alert._id)}
+                    onClick={() => dispatch(toggleExpandAlert(alert._id))}
                   >
                     <div className="mt-0.5">{getAlertIcon(alert.type)}</div>
                     <div className="flex-1 min-w-0">
@@ -169,12 +184,25 @@ const Alerts = () => {
                             className="overflow-hidden"
                           >
                             <p className="text-text-muted text-sm mt-2">{alert.description}</p>
-                            <div className="flex items-center gap-2 mt-3">
+                            <div className="flex items-center gap-2 mt-3 flex-wrap">
+                              {/* Go to module button */}
+                              {MODULE_ROUTES[alert.module] && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleGoToModule(alert.module);
+                                  }}
+                                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-accent text-white hover:bg-blue-600 transition-colors"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Go to {alert.module}
+                                </button>
+                              )}
                               {!alert.read && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    markReadMutation.mutate(alert._id);
+                                    handleMarkRead(alert._id);
                                   }}
                                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-accent/10 text-blue-accent hover:bg-blue-accent/20 transition-colors"
                                 >
@@ -185,7 +213,7 @@ const Alerts = () => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  deleteMutation.mutate(alert._id);
+                                  handleDelete(alert._id);
                                 }}
                                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
                               >

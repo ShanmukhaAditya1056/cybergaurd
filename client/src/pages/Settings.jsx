@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { motion } from 'framer-motion';
-import { useMutation } from '@tanstack/react-query';
 import {
   Settings as SettingsIcon, Shield, Lock, Trash2, Bell, Clipboard, Clock,
   CheckCircle, Award, Info, AlertTriangle
 } from 'lucide-react';
-import { clearAllScans } from '../api/dashboardApi';
+import { useClearAllScansMutation } from '../store/api/apiSlice';
+import { toggleRealTimeAlerts, toggleClipboardScanner, setScanFrequency } from '../store/slices/settingsSlice';
 import toast from 'react-hot-toast';
 
 const pageVariants = {
@@ -15,39 +16,19 @@ const pageVariants = {
 };
 
 const Settings = () => {
-  // Load settings from localStorage
-  const [realTimeAlerts, setRealTimeAlerts] = useState(() => {
-    return JSON.parse(localStorage.getItem('cg_realTimeAlerts') ?? 'true');
-  });
-  const [clipboardScanner, setClipboardScanner] = useState(() => {
-    return JSON.parse(localStorage.getItem('cg_clipboardScanner') ?? 'false');
-  });
-  const [scanFrequency, setScanFrequency] = useState(() => {
-    return localStorage.getItem('cg_scanFrequency') ?? 'Daily';
-  });
+  const dispatch = useDispatch();
+  const { realTimeAlerts, clipboardScanner, scanFrequency } = useSelector((state) => state.settings);
 
-  // Persist settings
-  useEffect(() => {
-    localStorage.setItem('cg_realTimeAlerts', JSON.stringify(realTimeAlerts));
-  }, [realTimeAlerts]);
+  const [triggerClear, { isLoading: isClearing }] = useClearAllScansMutation();
 
-  useEffect(() => {
-    localStorage.setItem('cg_clipboardScanner', JSON.stringify(clipboardScanner));
-  }, [clipboardScanner]);
-
-  useEffect(() => {
-    localStorage.setItem('cg_scanFrequency', scanFrequency);
-  }, [scanFrequency]);
-
-  const clearMutation = useMutation({
-    mutationFn: clearAllScans,
-    onSuccess: () => {
+  const handleClearAll = async () => {
+    try {
+      await triggerClear().unwrap();
       toast.success('All scan history cleared');
-    },
-    onError: (error) => {
-      toast.error(error?.response?.data?.message || 'Failed to clear history');
+    } catch (error) {
+      toast.error(error?.data?.message || 'Failed to clear history');
     }
-  });
+  };
 
   const mlModels = [
     { name: 'DistilBERT', task: 'Phishing NLP Detection', accuracy: '96.8%' },
@@ -104,7 +85,7 @@ const Settings = () => {
                 </div>
               </div>
               <button
-                onClick={() => setRealTimeAlerts(!realTimeAlerts)}
+                onClick={() => dispatch(toggleRealTimeAlerts())}
                 className={`inline-flex items-center flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
                   realTimeAlerts ? 'bg-safe' : 'bg-navy-border'
                 }`}
@@ -125,7 +106,7 @@ const Settings = () => {
                 </div>
               </div>
               <button
-                onClick={() => setClipboardScanner(!clipboardScanner)}
+                onClick={() => dispatch(toggleClipboardScanner())}
                 className={`inline-flex items-center flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
                   clipboardScanner ? 'bg-safe' : 'bg-navy-border'
                 }`}
@@ -147,7 +128,7 @@ const Settings = () => {
               </div>
               <select
                 value={scanFrequency}
-                onChange={(e) => setScanFrequency(e.target.value)}
+                onChange={(e) => dispatch(setScanFrequency(e.target.value))}
                 className="bg-navy border border-navy-border rounded-lg text-text-white px-3 py-1.5 text-sm appearance-none cursor-pointer"
               >
                 <option value="Daily">Daily</option>
@@ -282,7 +263,7 @@ const Settings = () => {
                         Cancel
                       </button>
                       <button 
-                        onClick={() => { clearMutation.mutate(); toast.dismiss(t.id); }} 
+                        onClick={() => { handleClearAll(); toast.dismiss(t.id); }} 
                         className="px-4 py-2 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all"
                       >
                         Yes, Clear
@@ -291,11 +272,11 @@ const Settings = () => {
                   </div>
                 ), { duration: 6000, position: 'top-center' });
               }}
-              disabled={clearMutation.isPending}
+              disabled={isClearing}
               className="flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-danger/20 text-danger border border-danger/30 hover:bg-danger/30 transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
-              {clearMutation.isPending ? 'Clearing...' : 'Clear All History'}
+              {isClearing ? 'Clearing...' : 'Clear All History'}
             </button>
           </div>
         </div>

@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wifi, Shield, Search, CheckCircle, XCircle, AlertTriangle, Clock, Info } from 'lucide-react';
-import { analyzeWifi, getWifiHistory } from '../api/wifiApi';
+import { Wifi, Shield, Search, CheckCircle, XCircle, AlertTriangle, Clock, Info, Radar, Signal } from 'lucide-react';
+import { useAnalyzeWifiMutation, useAutoScanWifiMutation, useGetWifiHistoryQuery } from '../store/api/apiSlice';
 import ScoreRing from '../components/ScoreRing';
 import RiskBadge from '../components/RiskBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -20,45 +19,51 @@ const WifiScanner = () => {
   const [isPublic, setIsPublic] = useState(false);
   const [hasPassword, setHasPassword] = useState(true);
   const [wifiResult, setWifiResult] = useState(null);
-  const queryClient = useQueryClient();
 
-  const { data: historyData } = useQuery({
-    queryKey: ['wifiHistory'],
-    queryFn: getWifiHistory,
-  });
+  const { data: historyData } = useGetWifiHistoryQuery();
 
-  const analyzeMutation = useMutation({
-    mutationFn: (data) => analyzeWifi(data),
-    onSuccess: (data) => {
-      setWifiResult(data.data);
-      queryClient.invalidateQueries(['wifiHistory']);
-      queryClient.invalidateQueries(['securityScore']);
-      queryClient.invalidateQueries(['navbarScore']);
-      const score = data.data.trust_score;
-      if (score >= 70) toast.success(`✅ Network score: ${score}/100 — Safe`);
-      else if (score >= 40) toast('⚠️ Network score: ' + score + '/100 — Warning', { icon: '⚠️' });
-      else toast.error(`🚨 Network score: ${score}/100 — Critical Risk`);
-    },
-    onError: (error) => {
-      toast.error(error?.response?.data?.message || 'Analysis failed');
+  const [triggerAnalyze, { isLoading: isAnalyzing }] = useAnalyzeWifiMutation();
+  const [triggerAutoScan, { isLoading: isAutoScanning }] = useAutoScanWifiMutation();
+
+  const handleAutoScan = async () => {
+    try {
+      const data = await triggerAutoScan().unwrap();
+      setWifiResult(data);
+      if (data.ssid) setSsid(data.ssid);
+      if (data.encryption) setEncryption(data.encryption);
+      const score = data.trust_score;
+      if (score >= 70) toast.success(`✅ Auto-detected: ${data.ssid} — Score: ${score}/100`);
+      else if (score >= 40) toast(`⚠️ Auto-detected: ${data.ssid} — Score: ${score}/100`, { icon: '⚠️' });
+      else toast.error(`🚨 Auto-detected: ${data.ssid} — Score: ${score}/100`);
+    } catch (error) {
+      toast.error(error?.data?.message || 'Could not auto-detect WiFi. Try manual input below.');
     }
-  });
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!ssid.trim()) {
       toast.error('Please enter a network name (SSID)');
       return;
     }
-    analyzeMutation.mutate({
-      ssid,
-      encryption,
-      isPublic: isPublic ? 'yes' : 'no',
-      hasPassword: hasPassword ? 'yes' : 'no'
-    });
+    try {
+      const data = await triggerAnalyze({
+        ssid,
+        encryption,
+        isPublic: isPublic ? 'yes' : 'no',
+        hasPassword: hasPassword ? 'yes' : 'no'
+      }).unwrap();
+      setWifiResult(data);
+      const score = data.trust_score;
+      if (score >= 70) toast.success(`✅ Network score: ${score}/100 — Safe`);
+      else if (score >= 40) toast('⚠️ Network score: ' + score + '/100 — Warning', { icon: '⚠️' });
+      else toast.error(`🚨 Network score: ${score}/100 — Critical Risk`);
+    } catch (error) {
+      toast.error(error?.data?.message || 'Analysis failed');
+    }
   };
 
-  const history = historyData?.data ?? [];
+  const history = historyData ?? [];
 
   const getCheckIcon = (status) => {
     switch (status) {
@@ -98,18 +103,39 @@ const WifiScanner = () => {
           </div>
         </div>
 
-        {/* Limitation Notice */}
-        <div className="glass-card p-4 mb-6 border-l-4 border-l-blue-accent">
-          <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-accent flex-shrink-0 mt-0.5" />
+        {/* Auto-Detect Button */}
+        <div className="glass-card p-6 mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <Radar className="w-5 h-5 text-blue-accent" />
             <div>
-              <h3 className="text-sm font-semibold text-text-white mb-1">ℹ️ Browser Limitation</h3>
-              <p className="text-text-dim text-xs">
-                Web browsers cannot access Wi-Fi hardware directly. Instead, manually enter your network details below 
-                for a comprehensive security analysis based on your configuration.
-              </p>
+              <h3 className="text-sm font-semibold text-text-white">Auto-Detect Network</h3>
+              <p className="text-text-dim text-xs">Automatically reads your connected WiFi network details</p>
             </div>
           </div>
+          <button
+            onClick={() => handleAutoScan()}
+            disabled={isAutoScanning}
+            className="w-full bg-blue-accent hover:bg-blue-600 text-white font-semibold rounded-lg px-6 py-3.5 transition-all duration-300 btn-glow flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isAutoScanning ? (
+              <>
+                <Wifi className="w-4 h-4 animate-pulse" />
+                Detecting WiFi Network...
+              </>
+            ) : (
+              <>
+                <Signal className="w-4 h-4" />
+                Scan Connected WiFi
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex-1 h-px bg-navy-border" />
+          <span className="text-text-dim text-xs">OR ENTER MANUALLY</span>
+          <div className="flex-1 h-px bg-navy-border" />
         </div>
 
         {/* Network Analysis Form */}
@@ -178,21 +204,21 @@ const WifiScanner = () => {
 
             <button
               type="submit"
-              disabled={analyzeMutation.isPending}
+              disabled={isAnalyzing}
               className="w-full bg-blue-accent hover:bg-blue-600 text-white font-semibold rounded-lg px-6 py-3 transition-all duration-300 btn-glow flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Search className="w-4 h-4" />
-              {analyzeMutation.isPending ? 'Analyzing...' : 'Analyze Network'}
+              {isAnalyzing ? 'Analyzing...' : 'Analyze Network'}
             </button>
           </form>
         </div>
 
         {/* Loading */}
-        {analyzeMutation.isPending && <LoadingSpinner text="Analyzing network security..." />}
+        {isAnalyzing && <LoadingSpinner text="Analyzing network security..." />}
 
         {/* WiFi Result */}
         <AnimatePresence mode="wait">
-          {wifiResult && !analyzeMutation.isPending && (
+          {wifiResult && !isAnalyzing && (
             <motion.div
               key="wifi-result"
               initial={{ opacity: 0, y: 20 }}
@@ -209,7 +235,22 @@ const WifiScanner = () => {
                     <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
                       <RiskBadge risk={wifiResult.risk_level} size="md" />
                       <span className="text-text-muted text-sm">Trust Score: {wifiResult.trust_score}/100</span>
+                      {wifiResult.autoDetected && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-blue-accent/10 text-blue-accent border border-blue-accent/20">
+                          Auto-Detected
+                        </span>
+                      )}
                     </div>
+                    {/* Extra network details from auto-detect */}
+                    {wifiResult.signal && (
+                      <div className="flex flex-wrap gap-3 mt-2">
+                        <span className="text-xs text-text-dim">Signal: {wifiResult.signal}%</span>
+                        {wifiResult.channel && <span className="text-xs text-text-dim">Channel: {wifiResult.channel}</span>}
+                        {wifiResult.band && <span className="text-xs text-text-dim">Band: {wifiResult.band}</span>}
+                        {wifiResult.radioType && <span className="text-xs text-text-dim">Radio: {wifiResult.radioType}</span>}
+                        {wifiResult.authentication && <span className="text-xs text-text-dim">Auth: {wifiResult.authentication}</span>}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
