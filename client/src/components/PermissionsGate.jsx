@@ -77,6 +77,8 @@ const PermissionsGate = ({ children }) => {
     localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(allPerms));
     setPermissions(allPerms);
     setShowPrompt(false);
+    // Notify other components of permission change
+    window.dispatchEvent(new CustomEvent('cyberguard-permissions-changed', { detail: allPerms }));
   };
 
   const handleContinue = () => {
@@ -86,6 +88,8 @@ const PermissionsGate = ({ children }) => {
     };
     localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(perms));
     setShowPrompt(false);
+    // Notify other components of permission change
+    window.dispatchEvent(new CustomEvent('cyberguard-permissions-changed', { detail: perms }));
   };
 
   const togglePermission = (key) => {

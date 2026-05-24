@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link, Search, ShieldAlert, Clock, CheckCircle, XCircle } from 'lucide-react';
-import { useScanPhishingMutation, useGetPhishingHistoryQuery } from '../store/api/apiSlice';
+import { Link, Search, ShieldAlert, Clock, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { useScanPhishingMutation, useGetPhishingHistoryQuery, useClearPhishingHistoryMutation } from '../store/api/apiSlice';
 import ShapBar from '../components/ShapBar';
 import RiskBadge from '../components/RiskBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
+import { sanitizeText } from '../utils/sanitize';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -20,6 +21,20 @@ const PhishingScanner = () => {
   const { data: historyData, isLoading: historyLoading } = useGetPhishingHistoryQuery();
 
   const [triggerScan, { isLoading: isScanning }] = useScanPhishingMutation();
+  const [triggerClearHistory] = useClearPhishingHistoryMutation();
+
+  const handleClearHistory = () => {
+    toast((t) => (
+      <div className="flex flex-col gap-3 max-w-sm">
+        <p className="text-sm font-medium" style={{ color: '#E8F0FA' }}>🗑️ Delete all phishing scan history?</p>
+        <p className="text-xs" style={{ color: '#8BA4C2' }}>This action cannot be undone.</p>
+        <div className="flex gap-2 justify-end mt-1">
+          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all" style={{ border: '1px solid #1A3C5E', color: '#8BA4C2' }}>Cancel</button>
+          <button onClick={async () => { toast.dismiss(t.id); try { await triggerClearHistory().unwrap(); toast.success('🧹 Phishing history cleared successfully'); } catch { toast.error('Failed to clear phishing history'); } }} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all">Yes, Delete</button>
+        </div>
+      </div>
+    ), { duration: 6000, position: 'top-center' });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,7 +43,8 @@ const PhishingScanner = () => {
       return;
     }
     try {
-      const data = await triggerScan(inputValue).unwrap();
+      const cleanInput = sanitizeText(inputValue);
+      const data = await triggerScan(cleanInput).unwrap();
       setScanResult(data);
       if (data.verdict === 'PHISHING') {
         toast.error('⚠️ Phishing detected!');
@@ -186,9 +202,21 @@ const PhishingScanner = () => {
 
         {/* Scan History */}
         <div className="glass-card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-text-dim" />
-            <h3 className="text-lg font-semibold text-text-white">Scan History</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-text-dim" />
+              <h3 className="text-lg font-semibold text-text-white">Scan History</h3>
+            </div>
+            {history.length > 0 && (
+              <button
+                onClick={handleClearHistory}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                title="Clear phishing history"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Clear</span>
+              </button>
+            )}
           </div>
 
           {historyLoading ? (

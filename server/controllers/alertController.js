@@ -76,8 +76,49 @@ const deleteAlert = async (req, res) => {
   }
 };
 
+/**
+ * PATCH /api/alerts/read-all
+ * Mark all alerts as read
+ */
+const markAllAsRead = async (req, res) => {
+  try {
+    const result = await Alert.updateMany(
+      { read: false },
+      { read: true }
+    );
+
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} alert(s) marked as read`,
+      modifiedCount: result.modifiedCount
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * DELETE /api/alerts/all
+ * Delete all alerts
+ */
+const deleteAllAlerts = async (req, res) => {
+  try {
+    const result = await Alert.deleteMany({});
+
+    res.json({
+      success: true,
+      message: `${result.deletedCount} alert(s) deleted`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAlerts,
   markAsRead,
-  deleteAlert
+  markAllAsRead,
+  deleteAlert,
+  deleteAllAlerts
 };

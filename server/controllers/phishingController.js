@@ -95,7 +95,24 @@ const getPhishingHistory = async (req, res) => {
   }
 };
 
+/**
+ * DELETE /api/phishing/history
+ * Clear phishing scan history only
+ */
+const clearPhishingHistory = async (req, res) => {
+  try {
+    const result = await ScanResult.deleteMany({ type: 'phishing' });
+    res.json({
+      success: true,
+      message: `${result.deletedCount} phishing scan(s) cleared`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   scanPhishing,
-  getPhishingHistory
+  getPhishingHistory,
+  clearPhishingHistory
 };

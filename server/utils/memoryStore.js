@@ -72,6 +72,18 @@ class MemoryCollection {
     return { deletedCount: before - this.documents.length };
   }
 
+  async updateMany(query = {}, update = {}) {
+    let modifiedCount = 0;
+    const updateFields = update.$set || update;
+    for (const doc of this.documents) {
+      if (this._matches(doc, query)) {
+        Object.assign(doc, updateFields);
+        modifiedCount++;
+      }
+    }
+    return { modifiedCount };
+  }
+
   _filter(query) {
     if (!query || Object.keys(query).length === 0) return [...this.documents];
     return this.documents.filter(d => this._matches(d, query));

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, Phone, Shield, ShieldAlert, AlertTriangle, CheckCircle, Clock, Hash } from 'lucide-react';
-import { useCheckBreachMutation, useGetBreachHistoryQuery } from '../store/api/apiSlice';
+import { Lock, Mail, Phone, Shield, ShieldAlert, AlertTriangle, CheckCircle, Clock, Hash, Trash2 } from 'lucide-react';
+import { useCheckBreachMutation, useGetBreachHistoryQuery, useClearBreachHistoryMutation } from '../store/api/apiSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
+import { sanitizeEmail, sanitizePhone } from '../utils/sanitize';
 
 const pageVariants = {
   initial: { opacity: 0, y: 20 },
@@ -19,6 +20,20 @@ const BreachMonitor = () => {
   const { data: historyData } = useGetBreachHistoryQuery();
 
   const [triggerCheck, { isLoading: isChecking }] = useCheckBreachMutation();
+  const [triggerClearHistory] = useClearBreachHistoryMutation();
+
+  const handleClearHistory = () => {
+    toast((t) => (
+      <div className="flex flex-col gap-3 max-w-sm">
+        <p className="text-sm font-medium" style={{ color: '#E8F0FA' }}>🗑️ Delete all breach check history?</p>
+        <p className="text-xs" style={{ color: '#8BA4C2' }}>This action cannot be undone.</p>
+        <div className="flex gap-2 justify-end mt-1">
+          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all" style={{ border: '1px solid #1A3C5E', color: '#8BA4C2' }}>Cancel</button>
+          <button onClick={async () => { toast.dismiss(t.id); try { await triggerClearHistory().unwrap(); toast.success('🧹 Breach history cleared successfully'); } catch { toast.error('Failed to clear breach history'); } }} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all">Yes, Delete</button>
+        </div>
+      </div>
+    ), { duration: 6000, position: 'top-center' });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,7 +42,25 @@ const BreachMonitor = () => {
       return;
     }
     try {
-      const data = await triggerCheck({ input: inputValue, type: activeTab }).unwrap();
+      // Sanitize input based on type
+      let cleanInput = inputValue;
+      if (activeTab === 'email') {
+        const { value, isValid } = sanitizeEmail(inputValue);
+        if (!isValid) {
+          toast.error('Please enter a valid email address');
+          return;
+        }
+        cleanInput = value;
+      } else {
+        const { value, isValid } = sanitizePhone(inputValue);
+        if (!isValid) {
+          toast.error('Please enter a valid phone number');
+          return;
+        }
+        cleanInput = value;
+      }
+
+      const data = await triggerCheck({ input: cleanInput, type: activeTab }).unwrap();
       setBreachResult(data);
       if (!data.apiUsed) {
         toast.error('⚠️ Breach database was unreachable. Please try again later.');
@@ -244,9 +277,21 @@ const BreachMonitor = () => {
 
         {/* Check History */}
         <div className="glass-card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-text-dim" />
-            <h3 className="text-lg font-semibold text-text-white">Check History</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-text-dim" />
+              <h3 className="text-lg font-semibold text-text-white">Check History</h3>
+            </div>
+            {history.length > 0 && (
+              <button
+                onClick={handleClearHistory}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                title="Clear breach history"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Clear</span>
+              </button>
+            )}
           </div>
 
           {history.length > 0 ? (

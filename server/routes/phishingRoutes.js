@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { scanPhishing, getPhishingHistory } = require('../controllers/phishingController');
-const rateLimiter = require('../middleware/rateLimiter');
+const { scanPhishing, getPhishingHistory, clearPhishingHistory } = require('../controllers/phishingController');
+const { scanLimiter, writeLimiter } = require('../middleware/rateLimiter');
 
-router.post('/scan', rateLimiter, scanPhishing);
+router.post('/scan', scanLimiter, scanPhishing);
 router.get('/history', getPhishingHistory);
+router.delete('/history', writeLimiter, clearPhishingHistory);
 
 module.exports = router;

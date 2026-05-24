@@ -106,13 +106,17 @@ const getSecurityScore = async (req, res) => {
     // Set today's score to the current calculated score
     scoreHistory[scoreHistory.length - 1].score = unifiedScore;
 
-    // Fill nulls: carry forward the previous known score, or use current score as baseline
-    let lastKnown = unifiedScore;
-    for (let i = scoreHistory.length - 1; i >= 0; i--) {
+    // Forward-fill nulls: carry forward the last known score
+    // Days before ANY scan activity use today's current score as baseline
+    let lastKnown = unifiedScore; // default baseline
+    // First pass: find the earliest known score
+    for (let i = 0; i < scoreHistory.length; i++) {
       if (scoreHistory[i].score !== null) {
         lastKnown = scoreHistory[i].score;
+        break;
       }
     }
+    // Second pass: fill nulls forward
     for (let i = 0; i < scoreHistory.length; i++) {
       if (scoreHistory[i].score === null) {
         scoreHistory[i].score = lastKnown;
