@@ -689,36 +689,76 @@ function getSystemInfo() {
 
 // ============================================================
 // 7. Full Device Scan (all categories)
+// Accepts an optional `permissions` object to skip denied categories:
+//   { processScan: bool, networkScan: bool, wifiScan: bool }
+// Defaults to all-allowed if not provided (backward-compatible).
 // ============================================================
-async function fullDeviceScan(progressCallback) {
+async function fullDeviceScan(progressCallback, permissions = {}) {
   const results = {};
   const startTime = Date.now();
 
-  // System info (instant)
+  // Resolve permissions — default to true if not specified
+  const allowProcessScan = permissions.processScan !== false;
+  const allowNetworkScan = permissions.networkScan !== false;
+  const allowWifiScan = permissions.wifiScan !== false;
+
+  // Track which categories were denied
+  results.permissionsDenied = {
+    processScan: !allowProcessScan,
+    networkScan: !allowNetworkScan,
+    wifiScan: !allowWifiScan,
+  };
+
+  // System info (instant — always allowed, it's the required permission)
   if (progressCallback) progressCallback('system', 'Gathering system information...');
   results.system = getSystemInfo();
 
-  // Installed programs
-  if (progressCallback) progressCallback('programs', 'Scanning installed programs...');
-  results.installedPrograms = await scanInstalledPrograms();
+  // Installed programs — requires processScan permission
+  if (allowProcessScan) {
+    if (progressCallback) progressCallback('programs', 'Scanning installed programs...');
+    results.installedPrograms = await scanInstalledPrograms();
+  } else {
+    if (progressCallback) progressCallback('programs', 'Installed programs scan — permission denied, skipping...');
+    results.installedPrograms = [];
+  }
 
-  // Running processes
-  if (progressCallback) progressCallback('processes', 'Scanning running processes...');
-  results.runningProcesses = await scanRunningProcesses();
+  // Running processes — requires processScan permission
+  if (allowProcessScan) {
+    if (progressCallback) progressCallback('processes', 'Scanning running processes...');
+    results.runningProcesses = await scanRunningProcesses();
+  } else {
+    if (progressCallback) progressCallback('processes', 'Process scan — permission denied, skipping...');
+    results.runningProcesses = [];
+  }
 
-  // Startup items
-  if (progressCallback) progressCallback('startup', 'Checking startup programs...');
-  results.startupItems = await scanStartupPrograms();
+  // Startup items — requires processScan permission
+  if (allowProcessScan) {
+    if (progressCallback) progressCallback('startup', 'Checking startup programs...');
+    results.startupItems = await scanStartupPrograms();
+  } else {
+    if (progressCallback) progressCallback('startup', 'Startup scan — permission denied, skipping...');
+    results.startupItems = [];
+  }
 
-  // Open ports
-  if (progressCallback) progressCallback('ports', 'Scanning network ports...');
-  results.openPorts = await scanOpenPorts();
+  // Open ports — requires networkScan permission
+  if (allowNetworkScan) {
+    if (progressCallback) progressCallback('ports', 'Scanning network ports...');
+    results.openPorts = await scanOpenPorts();
+  } else {
+    if (progressCallback) progressCallback('ports', 'Port scan — permission denied, skipping...');
+    results.openPorts = [];
+  }
 
-  // WiFi
-  if (progressCallback) progressCallback('wifi', 'Detecting WiFi network...');
-  results.wifi = await scanWifi();
+  // WiFi — requires wifiScan permission
+  if (allowWifiScan) {
+    if (progressCallback) progressCallback('wifi', 'Detecting WiFi network...');
+    results.wifi = await scanWifi();
+  } else {
+    if (progressCallback) progressCallback('wifi', 'WiFi scan — permission denied, skipping...');
+    results.wifi = null;
+  }
 
-  // Generate summary
+  // Generate summary (only from scanned categories)
   const elapsedMs = Date.now() - startTime;
   const allItems = [
     ...results.installedPrograms,
@@ -746,6 +786,7 @@ async function fullDeviceScan(progressCallback) {
     scanTime: elapsedMs < 1000 ? `${elapsedMs}ms` : `${(elapsedMs / 1000).toFixed(1)}s`,
     scannedAt: new Date().toISOString(),
     overallRisk: critical > 0 ? 'CRITICAL' : high > 0 ? 'HIGH' : medium > 3 ? 'MEDIUM' : 'LOW',
+    permissionsDenied: results.permissionsDenied,
   };
 
   return results;

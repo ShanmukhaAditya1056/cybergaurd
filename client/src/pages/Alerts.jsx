@@ -2,8 +2,14 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Trash2, Check, AlertTriangle, CheckCircle, XCircle, Info, Shield, ExternalLink } from 'lucide-react';
-import { useGetAlertsQuery, useMarkAlertAsReadMutation, useDeleteAlertMutation } from '../store/api/apiSlice';
+import { Bell, Trash2, Check, AlertTriangle, CheckCircle, XCircle, Info, Shield, ExternalLink, CheckCheck } from 'lucide-react';
+import {
+  useGetAlertsQuery,
+  useMarkAlertAsReadMutation,
+  useDeleteAlertMutation,
+  useMarkAllAlertsAsReadMutation,
+  useDeleteAllAlertsMutation
+} from '../store/api/apiSlice';
 import { setFilter, toggleExpandAlert } from '../store/slices/alertsSlice';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -34,6 +40,8 @@ const Alerts = () => {
 
   const [triggerMarkRead] = useMarkAlertAsReadMutation();
   const [triggerDelete] = useDeleteAlertMutation();
+  const [triggerMarkAllRead] = useMarkAllAlertsAsReadMutation();
+  const [triggerDeleteAll] = useDeleteAllAlertsMutation();
 
   const handleMarkRead = async (id) => {
     try {
@@ -46,6 +54,21 @@ const Alerts = () => {
     try {
       await triggerDelete(id).unwrap();
       toast.success('Alert deleted');
+    } catch { /* silently fail */ }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const result = await triggerMarkAllRead().unwrap();
+      toast.success(result.message || 'All alerts marked as read');
+    } catch { /* silently fail */ }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!window.confirm('Are you sure you want to delete all alerts? This cannot be undone.')) return;
+    try {
+      const result = await triggerDeleteAll().unwrap();
+      toast.success(result.message || 'All alerts deleted');
     } catch { /* silently fail */ }
   };
 
@@ -122,6 +145,26 @@ const Alerts = () => {
               <p className="text-text-muted text-sm">{alerts.length} alert{alerts.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
+
+          {/* Bulk Actions */}
+          {alerts.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleMarkAllRead}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-blue-accent/10 text-blue-accent hover:bg-blue-accent/20 transition-colors"
+              >
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Mark All Read</span>
+              </button>
+              <button
+                onClick={handleDeleteAll}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Clear All</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Filter Buttons */}

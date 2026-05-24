@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wifi, Shield, Search, CheckCircle, XCircle, AlertTriangle, Clock, Info, Radar, Signal } from 'lucide-react';
-import { useAnalyzeWifiMutation, useAutoScanWifiMutation, useGetWifiHistoryQuery } from '../store/api/apiSlice';
+import { Wifi, Shield, Search, CheckCircle, XCircle, AlertTriangle, Clock, Info, Radar, Signal, Lock, Trash2 } from 'lucide-react';
+import { useAnalyzeWifiMutation, useAutoScanWifiMutation, useGetWifiHistoryQuery, useClearWifiHistoryMutation } from '../store/api/apiSlice';
+import { isPermissionGranted } from '../utils/permissionUtils';
 import ScoreRing from '../components/ScoreRing';
 import RiskBadge from '../components/RiskBadge';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -24,10 +25,41 @@ const WifiScanner = () => {
 
   const [triggerAnalyze, { isLoading: isAnalyzing }] = useAnalyzeWifiMutation();
   const [triggerAutoScan, { isLoading: isAutoScanning }] = useAutoScanWifiMutation();
+  const [triggerClearHistory] = useClearWifiHistoryMutation();
+
+  const handleClearHistory = () => {
+    toast((t) => (
+      <div className="flex flex-col gap-3 max-w-sm">
+        <p className="text-sm font-medium" style={{ color: '#E8F0FA' }}>🗑️ Delete all WiFi scan history?</p>
+        <p className="text-xs" style={{ color: '#8BA4C2' }}>This action cannot be undone.</p>
+        <div className="flex gap-2 justify-end mt-1">
+          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all" style={{ border: '1px solid #1A3C5E', color: '#8BA4C2' }}>Cancel</button>
+          <button onClick={async () => { toast.dismiss(t.id); try { await triggerClearHistory().unwrap(); toast.success('🧹 WiFi history cleared successfully'); } catch { toast.error('Failed to clear WiFi history'); } }} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all">Yes, Delete</button>
+        </div>
+      </div>
+    ), { duration: 6000, position: 'top-center' });
+  };
+
+  // Check WiFi scan permission
+  const [wifiPermission, setWifiPermission] = useState(() => isPermissionGranted('wifiScan'));
+
+  useEffect(() => {
+    const handlePermChange = () => setWifiPermission(isPermissionGranted('wifiScan'));
+    window.addEventListener('cyberguard-permissions-changed', handlePermChange);
+    window.addEventListener('storage', handlePermChange);
+    return () => {
+      window.removeEventListener('cyberguard-permissions-changed', handlePermChange);
+      window.removeEventListener('storage', handlePermChange);
+    };
+  }, []);
 
   const handleAutoScan = async () => {
+    if (!wifiPermission) {
+      toast.error('WiFi scanning permission denied. Enable it in Settings.');
+      return;
+    }
     try {
-      const data = await triggerAutoScan().unwrap();
+      const data = await triggerAutoScan({ wifiPermission: true }).unwrap();
       setWifiResult(data);
       if (data.ssid) setSsid(data.ssid);
       if (data.encryption) setEncryption(data.encryption);
@@ -114,10 +146,19 @@ const WifiScanner = () => {
           </div>
           <button
             onClick={() => handleAutoScan()}
-            disabled={isAutoScanning}
-            className="w-full bg-blue-accent hover:bg-blue-600 text-white font-semibold rounded-lg px-6 py-3.5 transition-all duration-300 btn-glow flex items-center justify-center gap-2 disabled:opacity-50"
+            disabled={isAutoScanning || !wifiPermission}
+            className={`w-full font-semibold rounded-lg px-6 py-3.5 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 ${
+              wifiPermission
+                ? 'bg-blue-accent hover:bg-blue-600 text-white btn-glow'
+                : 'bg-navy-border text-text-dim cursor-not-allowed'
+            }`}
           >
-            {isAutoScanning ? (
+            {!wifiPermission ? (
+              <>
+                <Lock className="w-4 h-4" />
+                WiFi Scan Permission Denied
+              </>
+            ) : isAutoScanning ? (
               <>
                 <Wifi className="w-4 h-4 animate-pulse" />
                 Detecting WiFi Network...
@@ -129,6 +170,13 @@ const WifiScanner = () => {
               </>
             )}
           </button>
+          {!wifiPermission && (
+            <p className="text-xs text-warn mt-2 text-center">
+              🔒 WiFi scanning permission was denied. Go to{' '}
+              <a href="/settings" className="text-blue-accent underline hover:text-blue-400">Settings</a>{' '}
+              to enable it.
+            </p>
+          )}
         </div>
 
         {/* Divider */}
@@ -302,9 +350,21 @@ const WifiScanner = () => {
 
         {/* Scan History */}
         <div className="glass-card p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-text-dim" />
-            <h3 className="text-lg font-semibold text-text-white">Recent Scans</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-text-dim" />
+              <h3 className="text-lg font-semibold text-text-white">Recent Scans</h3>
+            </div>
+            {history.length > 0 && (
+              <button
+                onClick={handleClearHistory}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 transition-colors"
+                title="Clear WiFi history"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Clear</span>
+              </button>
+            )}
           </div>
 
           {history.length > 0 ? (

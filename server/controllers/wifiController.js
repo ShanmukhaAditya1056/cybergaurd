@@ -205,10 +205,19 @@ const getWifiHistory = async (req, res) => {
 
 /**
  * POST /api/wifi/auto-scan
- * Auto-detect WiFi network from the system and analyze
+ * Auto-detect WiFi network from the system and analyze.
+ * Accepts optional `wifiPermission` in body — if false, returns 403.
  */
 const autoScanWifi = async (req, res) => {
   try {
+    // Check if user denied WiFi scanning permission
+    if (req.body?.wifiPermission === false) {
+      return res.status(403).json({
+        success: false,
+        message: 'WiFi scanning permission has been denied. Enable it in Settings > Device Permissions.',
+      });
+    }
+
     const wifiInfo = await scanWifi();
 
     if (!wifiInfo.available) {
@@ -287,8 +296,25 @@ const autoScanWifi = async (req, res) => {
   }
 };
 
+/**
+ * DELETE /api/wifi/history
+ * Clear WiFi scan history only
+ */
+const clearWifiHistory = async (req, res) => {
+  try {
+    const result = await ScanResult.deleteMany({ type: 'wifi' });
+    res.json({
+      success: true,
+      message: `${result.deletedCount} WiFi scan(s) cleared`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   analyzeWifi,
   getWifiHistory,
   autoScanWifi,
+  clearWifiHistory,
 };

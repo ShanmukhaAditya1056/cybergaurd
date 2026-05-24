@@ -2,7 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
+const mongoSanitize = require('express-mongo-sanitize');
+const { generalLimiter } = require('./middleware/rateLimiter');
 const { connectDB, getMongoStatus } = require('./config/db');
+const { isMLAvailable } = require('./utils/mlClient');
 
 // Load environment variables
 dotenv.config();
@@ -20,6 +23,12 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Sanitize user input — prevent NoSQL injection attacks
+app.use(mongoSanitize());
+
+// Rate limiting — prevent API abuse
+app.use('/api/', generalLimiter);
+
 // Import routes
 const phishingRoutes = require('./routes/phishingRoutes');
 const malwareRoutes = require('./routes/malwareRoutes');
@@ -27,6 +36,7 @@ const breachRoutes = require('./routes/breachRoutes');
 const wifiRoutes = require('./routes/wifiRoutes');
 const alertRoutes = require('./routes/alertRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const passwordRoutes = require('./routes/passwordRoutes');
 
 // Mount routes
 app.use('/api/phishing', phishingRoutes);
@@ -35,6 +45,7 @@ app.use('/api/breach', breachRoutes);
 app.use('/api/wifi', wifiRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/password', passwordRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -43,6 +54,7 @@ app.get('/api/health', (req, res) => {
     message: 'CyberGuard AI API is running',
     version: '2.0.0',
     mongoConnected: getMongoStatus(),
+    mlServiceAvailable: isMLAvailable() ?? false,
     timestamp: new Date().toISOString()
   });
 });

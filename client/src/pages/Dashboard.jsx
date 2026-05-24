@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Link as LinkIcon, Smartphone, Lock, Wifi, Shield, Zap, TrendingUp, Bell } from 'lucide-react';
+import { Link as LinkIcon, Smartphone, Lock, Wifi, Shield, Zap, TrendingUp, Bell, WifiOff, RefreshCw } from 'lucide-react';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import {
   useGetSecurityScoreQuery,
@@ -8,6 +8,7 @@ import {
   useGetAlertsQuery,
   useScanMalwareMutation,
 } from '../store/api/apiSlice';
+import { buildScanPermissionsPayload } from '../utils/permissionUtils';
 import ScoreRing from '../components/ScoreRing';
 import ModuleCard from '../components/ModuleCard';
 import ThreatCard from '../components/ThreatCard';
@@ -26,11 +27,17 @@ const itemVariants = {
 };
 
 const Dashboard = () => {
-  const { data: scoreData, isLoading: scoreLoading } = useGetSecurityScoreQuery(undefined, {
+  const {
+    data: scoreData,
+    isLoading: scoreLoading,
+    isError: scoreError,
+    isFetching: scoreFetching,
+    refetch: refetchScore
+  } = useGetSecurityScoreQuery(undefined, {
     pollingInterval: 30000,
   });
 
-  const { data: statsData, isLoading: statsLoading } = useGetDashboardStatsQuery(undefined, {
+  const { data: statsData, isLoading: statsLoading, isError: statsError } = useGetDashboardStatsQuery(undefined, {
     pollingInterval: 30000,
   });
 
@@ -40,12 +47,15 @@ const Dashboard = () => {
 
   const handleQuickScan = async () => {
     try {
-      await triggerQuickScan().unwrap();
+      const scanPerms = buildScanPermissionsPayload();
+      await triggerQuickScan(scanPerms).unwrap();
       toast.success('Quick scan completed!');
     } catch (error) {
       toast.error(error?.data?.message || 'Scan failed');
     }
   };
+
+  const isServerDown = scoreError && statsError;
 
   if (scoreLoading || statsLoading) {
     return <LoadingSpinner fullPage text="Loading security dashboard..." />;
@@ -79,10 +89,38 @@ const Dashboard = () => {
       className="min-h-screen bg-navy pt-20 pb-10 px-4 sm:px-6 lg:px-8"
     >
       <div className="max-w-7xl mx-auto">
+        {/* Server error banner */}
+        {isServerDown && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 flex items-center justify-between p-3 rounded-xl bg-danger/10 border border-danger/20"
+          >
+            <div className="flex items-center gap-2">
+              <WifiOff className="w-4 h-4 text-danger" />
+              <span className="text-danger text-sm font-medium">Server unreachable — showing cached data</span>
+            </div>
+            <button
+              onClick={refetchScore}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-danger/20 text-danger hover:bg-danger/30 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" />
+              Retry
+            </button>
+          </motion.div>
+        )}
+
         {/* Header */}
         <motion.div variants={itemVariants} className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-text-white mb-2">Security Dashboard</h1>
-          <p className="text-text-muted">Your mobile security at a glance</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-text-white mb-2">Security Dashboard</h1>
+              <p className="text-text-muted">Your mobile security at a glance</p>
+            </div>
+            {scoreFetching && !scoreLoading && (
+              <RefreshCw className="w-4 h-4 text-blue-accent animate-spin" />
+            )}
+          </div>
         </motion.div>
 
         {/* Score + Quick Actions Row */}

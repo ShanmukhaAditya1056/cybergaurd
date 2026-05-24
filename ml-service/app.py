@@ -69,7 +69,18 @@ class HealthResponse(BaseModel):
 # Feature Extraction (same as training)
 # ============================================================
 def extract_url_features(url: str) -> dict:
-    url_lower = url.lower()
+    url_lower = url.lower().strip()
+    
+    # Normalize: ensure URL has a scheme for proper parsing
+    normalized = url_lower
+    if not normalized.startswith('http://') and not normalized.startswith('https://'):
+        normalized = 'http://' + normalized
+    
+    # Safely extract domain and path
+    parts = normalized.split('/')
+    domain = parts[2] if len(parts) > 2 else normalized
+    domain_parts = domain.split('.')
+    
     features = {
         'url_length': len(url),
         'num_dots': url.count('.'),
@@ -85,8 +96,8 @@ def extract_url_features(url: str) -> dict:
         'has_ip': 1 if re.search(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', url) else 0,
         'has_https': 1 if url_lower.startswith('https') else 0,
         'has_http': 1 if url_lower.startswith('http://') else 0,
-        'num_subdomains': len(url.split('/')[2].split('.')) - 2 if len(url.split('/')) > 2 else 0,
-        'path_length': len(url.split('/', 3)[-1]) if len(url.split('/')) > 3 else 0,
+        'num_subdomains': max(0, len(domain_parts) - 2),
+        'path_length': len(normalized.split('/', 3)[-1]) if len(normalized.split('/')) > 3 else 0,
     }
     
     suspicious_keywords = [
@@ -109,8 +120,20 @@ def extract_url_features(url: str) -> dict:
     
     brand_patterns = ['paypal', 'google', 'apple', 'microsoft', 'amazon', 'facebook',
                       'netflix', 'sbi', 'hdfc', 'icici', 'paytm', 'phonepe', 'gpay']
-    domain = url.split('/')[2] if len(url.split('/')) > 2 else url
-    features['brand_in_subdomain'] = 1 if any(brand in domain.split('.')[0].lower() for brand in brand_patterns if brand not in domain.split('.')[-2].lower() if len(domain.split('.')) > 1) else 0
+    
+    # Safely check for brand impersonation in subdomain
+    brand_in_sub = 0
+    try:
+        if len(domain_parts) > 2:
+            subdomain = domain_parts[0].lower()
+            main_domain = domain_parts[-2].lower()
+            for brand in brand_patterns:
+                if brand in subdomain and brand not in main_domain:
+                    brand_in_sub = 1
+                    break
+    except Exception:
+        pass
+    features['brand_in_subdomain'] = brand_in_sub
     
     char_freq = Counter(url)
     url_len = max(len(url), 1)
@@ -200,6 +223,15 @@ def get_malware_explainer():
 # ============================================================
 # API Endpoints
 # ============================================================
+@app.get("/")
+async def root():
+    return {
+        "service": "CyberGuard AI ML Service",
+        "version": "1.0.0",
+        "endpoints": ["/health", "/predict/phishing", "/predict/malware"]
+    }
+
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     return {

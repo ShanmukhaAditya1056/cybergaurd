@@ -62,9 +62,10 @@ export const apiSlice = createApi({
     // Malware / Device Scanner
     // ========================
     scanMalware: builder.mutation({
-      query: () => ({
+      query: (permissions) => ({
         url: '/malware/scan',
         method: 'POST',
+        body: { permissions },
       }),
       invalidatesTags: ['SecurityScore', 'DashboardStats', 'Alerts', 'MalwareScan'],
       transformResponse: (response) => response.data,
@@ -74,6 +75,14 @@ export const apiSlice = createApi({
       query: () => '/malware/apps',
       providesTags: ['MalwareScan'],
       transformResponse: (response) => response.data,
+    }),
+
+    clearMalwareHistory: builder.mutation({
+      query: () => ({
+        url: '/malware/history',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['MalwareScan', 'SecurityScore', 'DashboardStats'],
     }),
 
     // ========================
@@ -95,6 +104,14 @@ export const apiSlice = createApi({
       transformResponse: (response) => response.data,
     }),
 
+    clearPhishingHistory: builder.mutation({
+      query: () => ({
+        url: '/phishing/history',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['PhishingHistory', 'SecurityScore', 'DashboardStats'],
+    }),
+
     // ========================
     // WiFi Scanner
     // ========================
@@ -109,9 +126,10 @@ export const apiSlice = createApi({
     }),
 
     autoScanWifi: builder.mutation({
-      query: () => ({
+      query: ({ wifiPermission } = {}) => ({
         url: '/wifi/auto-scan',
         method: 'POST',
+        body: { wifiPermission },
       }),
       invalidatesTags: ['SecurityScore', 'DashboardStats', 'WifiHistory', 'Alerts'],
       transformResponse: (response) => response.data,
@@ -121,6 +139,14 @@ export const apiSlice = createApi({
       query: () => '/wifi/history',
       providesTags: ['WifiHistory'],
       transformResponse: (response) => response.data,
+    }),
+
+    clearWifiHistory: builder.mutation({
+      query: () => ({
+        url: '/wifi/history',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['WifiHistory', 'SecurityScore', 'DashboardStats'],
     }),
 
     // ========================
@@ -140,6 +166,14 @@ export const apiSlice = createApi({
       query: () => '/breach/history',
       providesTags: ['BreachHistory'],
       transformResponse: (response) => response.data,
+    }),
+
+    clearBreachHistory: builder.mutation({
+      query: () => ({
+        url: '/breach/history',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['BreachHistory', 'SecurityScore', 'DashboardStats'],
     }),
 
     // ========================
@@ -169,6 +203,34 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ['Alerts'],
     }),
+
+    markAllAlertsAsRead: builder.mutation({
+      query: () => ({
+        url: '/alerts/read-all',
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Alerts', 'SecurityScore'],
+    }),
+
+    deleteAllAlerts: builder.mutation({
+      query: () => ({
+        url: '/alerts/all',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Alerts'],
+    }),
+
+    // ========================
+    // Password Strength
+    // ========================
+    checkPasswordStrength: builder.mutation({
+      query: (password) => ({
+        url: '/password/check',
+        method: 'POST',
+        body: { password },
+      }),
+      transformResponse: (response) => response.data,
+    }),
   }),
 });
 
@@ -182,18 +244,26 @@ export const {
   // Malware / Device Scanner
   useScanMalwareMutation,
   useGetMalwareAppsQuery,
+  useClearMalwareHistoryMutation,
   // Phishing
   useScanPhishingMutation,
   useGetPhishingHistoryQuery,
+  useClearPhishingHistoryMutation,
   // WiFi
   useAnalyzeWifiMutation,
   useAutoScanWifiMutation,
   useGetWifiHistoryQuery,
+  useClearWifiHistoryMutation,
   // Breach
   useCheckBreachMutation,
   useGetBreachHistoryQuery,
+  useClearBreachHistoryMutation,
   // Alerts
   useGetAlertsQuery,
   useMarkAlertAsReadMutation,
   useDeleteAlertMutation,
+  useMarkAllAlertsAsReadMutation,
+  useDeleteAllAlertsMutation,
+  // Password
+  useCheckPasswordStrengthMutation,
 } = apiSlice;

@@ -209,7 +209,25 @@ const getBreachHistory = async (req, res) => {
   }
 };
 
+/**
+ * DELETE /api/breach/history
+ * Clear breach check history only
+ */
+const clearBreachHistory = async (req, res) => {
+  try {
+    const breachLogResult = await BreachLog.deleteMany({});
+    const scanResult = await ScanResult.deleteMany({ type: 'breach' });
+    res.json({
+      success: true,
+      message: `${breachLogResult.deletedCount} breach log(s) and ${scanResult.deletedCount} scan(s) cleared`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   checkBreach,
-  getBreachHistory
+  getBreachHistory,
+  clearBreachHistory
 };
