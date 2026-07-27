@@ -427,13 +427,13 @@ const Settings = () => {
               onClick={() => {
                 toast((t) => (
                   <div className="flex flex-col gap-3 max-w-sm">
-                    <p className="text-sm font-medium" style={{ color: '#E8F0FA' }}>⚠️ Delete ALL scan history, alerts & breach logs?</p>
-                    <p className="text-xs" style={{ color: '#8BA4C2' }}>This is permanent and cannot be undone.</p>
+                    <p className="text-sm font-medium" style={{ color: '#1C1C1C' }}>⚠️ Delete ALL scan history, alerts & breach logs?</p>
+                    <p className="text-xs" style={{ color: '#5C5C5C' }}>This is permanent and cannot be undone.</p>
                     <div className="flex gap-2 justify-end mt-2">
                       <button 
                         onClick={() => toast.dismiss(t.id)} 
                         className="px-4 py-2 text-xs font-semibold rounded-lg transition-all"
-                        style={{ border: '1px solid #1A3C5E', color: '#8BA4C2' }}
+                        style={{ border: '1px solid #E6E6E6', color: '#5C5C5C' }}
                       >
                         Cancel
                       </button>

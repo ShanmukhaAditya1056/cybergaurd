@@ -1,0 +1,160 @@
+name: Deploy to GitHub Pages & Live Selenium E2E
+
+# Phase 7 — Deployment + Live E2E Testing
+# Flow:  Build -> Deploy to GitHub Pages -> Verify Deployment (HTTP 200)
+#        -> Run Selenium against the LIVE Pages URL -> Reports -> Artifacts -> Summary
+#
+# Selenium NEVER runs against localhost. It always targets the deployed URL
+# exposed by the `deploy` job (or the BASE_URL repo variable/secret for PRs).
+
+on:
+  push:
+    branches: ["master", "main", "serverBranch"]
+  pull_request:
+  workflow_dispatch:
+
+# Required for the official GitHub Pages deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one live deployment/test cycle at a time
+concurrency:
+  group: "pages-e2e"
+  cancel-in-progress: false
+
+jobs:
+  # ------------------------------------------------------------------ #
+  # 1) Build the React client in self-contained DEMO mode (static site)
+  # ------------------------------------------------------------------ #
+  build:
+    name: Build application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Build static site (demo mode, hash routing for Pages)
+        working-directory: client
+        env:
+          CI: "false" # do not treat CRA warnings as errors
+          REACT_APP_DEMO_MODE: "true"
+          REACT_APP_HASH_ROUTER: "true"
+        run: npm run build
+
+      - name: Add SPA 404 fallback
+        run: cp client/build/index.html client/build/404.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: client/build
+
+  # ------------------------------------------------------------------ #
+  # 2) Deploy to GitHub Pages (skipped on PRs — Pages deploy needs the
+  #    default branch / write access)
+  # ------------------------------------------------------------------ #
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy artifact to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # ------------------------------------------------------------------ #
+  # 3) Live Selenium E2E against the deployed URL
+  # ------------------------------------------------------------------ #
+  e2e:
+    name: Selenium E2E (live)
+    # Run after deploy on push/dispatch. On PRs, only run if a BASE_URL is
+    # configured (a previously-deployed environment exists).
+    needs: deploy
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Install E2E dependencies
+        working-directory: e2e-tests
+        run: pip install -r requirements.txt
+
+      - name: Resolve deployed BASE_URL
+        id: baseurl
+        env:
+          DEPLOY_URL: ${{ needs.deploy.outputs.page_url }}
+          VAR_URL: ${{ vars.BASE_URL }}
+        run: |
+          URL="${DEPLOY_URL:-$VAR_URL}"
+          if [ -z "$URL" ]; then
+            URL="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
+          fi
+          echo "base_url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Resolved BASE_URL=$URL"
+
+      - name: Wait for deployment to return HTTP 200
+        env:
+          BASE_URL: ${{ steps.baseurl.outputs.base_url }}
+        run: python e2e-tests/utils/wait_for_deploy.py
+
+      - name: Run Selenium E2E suite against live site
+        id: run_tests
+        continue-on-error: true
+        working-directory: e2e-tests
+        env:
+          BASE_URL: ${{ steps.baseurl.outputs.base_url }}
+          HEADLESS: "true"
+        run: python run_tests.py
+
+      - name: Upload test artifacts (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            e2e-tests/Test Results/**
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish execution summary
+        if: always()
+        run: cat "e2e-tests/Test Results/Summary/summary.md" >> "$GITHUB_STEP_SUMMARY" || echo "No summary generated" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail job if any test failed
+        if: always() && steps.run_tests.outcome == 'failure'
+        run: |
+          echo "One or more E2E tests failed — see artifacts and summary."
+          exit 1

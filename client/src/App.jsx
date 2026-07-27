@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
 import { AnimatePresence } from 'framer-motion';
@@ -17,6 +17,11 @@ import Alerts from './pages/Alerts';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 
+// On GitHub Pages the app is served from a project subpath (/repo/) with no
+// server-side routing, so HashRouter (URLs like /repo/#/phishing) avoids 404s
+// on deep-links and refreshes. Local dev keeps clean BrowserRouter URLs.
+const Router = process.env.REACT_APP_HASH_ROUTER === 'true' ? HashRouter : BrowserRouter;
+
 // Inner component that can use useLocation (must be inside Router)
 function AppRoutes() {
   const location = useLocation();
@@ -29,22 +34,22 @@ function AppRoutes() {
           position="top-right"
           toastOptions={{
             style: {
-              background: '#102540',
-              color: '#E8F0FA',
-              border: '1px solid #1A3C5E',
+              background: '#FFFFFF',
+              color: '#1C1C1C',
+              border: '1px solid #E6E6E6',
               borderRadius: '12px',
               fontSize: '14px',
             },
             success: {
               iconTheme: {
-                primary: '#4CAF82',
-                secondary: '#E8F0FA',
+                primary: '#1FA463',
+                secondary: '#1C1C1C',
               },
             },
             error: {
               iconTheme: {
-                primary: '#E05555',
-                secondary: '#E8F0FA',
+                primary: '#E23744',
+                secondary: '#1C1C1C',
               },
             },
           }}

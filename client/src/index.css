@@ -4,25 +4,25 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-/* ===== CSS CUSTOM PROPERTIES ===== */
+/* ===== CSS CUSTOM PROPERTIES (Zomato-inspired light theme) ===== */
 :root {
-  --navy-bg: #0D1B2E;
-  --navy-card: #102540;
-  --navy-border: #1A3C5E;
-  --navy-light: #152D4A;
-  --blue-accent: #2E75B6;
-  --blue-hover: #2563A0;
-  --text-white: #E8F0FA;
-  --text-muted: #8BA4C2;
-  --text-dim: #4A7AA8;
-  --safe: #4CAF82;
-  --safe-bg: #0F2E1A;
-  --warn: #F0A030;
-  --warn-bg: #2E1F05;
-  --danger: #E05555;
-  --danger-bg: #2E0A0A;
-  --critical: #FF6B6B;
-  --critical-bg: #3E0808;
+  --navy-bg: #F4F4F2;       /* app background */
+  --navy-card: #FFFFFF;     /* cards / panels */
+  --navy-border: #E6E6E6;   /* hairline borders */
+  --navy-light: #FAFAFA;    /* subtle raised surface */
+  --blue-accent: #E23744;   /* Zomato red primary */
+  --blue-hover: #C72C3B;
+  --text-white: #1C1C1C;    /* primary text */
+  --text-muted: #5C5C5C;    /* secondary text */
+  --text-dim: #9A9A9A;      /* captions */
+  --safe: #1FA463;
+  --safe-bg: #E7F6EE;
+  --warn: #E8932B;
+  --warn-bg: #FCF3E4;
+  --danger: #E23744;
+  --danger-bg: #FCEAEC;
+  --critical: #B0212F;
+  --critical-bg: #F9DDE0;
 }
 
 /* ===== BASE STYLES ===== */
@@ -56,7 +56,7 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--navy-border);
+  background: #D6D6D6;
   border-radius: 4px;
 }
 
@@ -64,13 +64,11 @@ body {
   background: var(--blue-accent);
 }
 
-/* ===== GLASSMORPHISM CARD ===== */
+/* ===== CARD (was glassmorphism -> now clean Zomato card) ===== */
 @layer components {
   .glass-card {
-    @apply rounded-xl border border-navy-border;
-    background: rgba(16, 37, 64, 0.8);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    @apply rounded-2xl border border-navy-border bg-white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   }
 
   .glass-card-hover {
@@ -78,31 +76,31 @@ body {
   }
 
   .glass-card-hover:hover {
-    border-color: var(--blue-accent);
-    box-shadow: 0 0 20px rgba(46, 117, 182, 0.15);
-    transform: translateY(-2px);
+    border-color: #DBDBDB;
+    box-shadow: 0 8px 24px rgba(28, 28, 28, 0.10), 0 2px 6px rgba(28, 28, 28, 0.06);
+    transform: translateY(-3px);
   }
 }
 
-/* ===== GRADIENT BACKGROUNDS ===== */
+/* ===== GRADIENT BACKGROUNDS (soft tints) ===== */
 .gradient-safe {
-  background: linear-gradient(135deg, var(--safe-bg), rgba(76, 175, 130, 0.1));
+  background: linear-gradient(135deg, var(--safe-bg), rgba(31, 164, 99, 0.06));
 }
 
 .gradient-warn {
-  background: linear-gradient(135deg, var(--warn-bg), rgba(240, 160, 48, 0.1));
+  background: linear-gradient(135deg, var(--warn-bg), rgba(232, 147, 43, 0.06));
 }
 
 .gradient-danger {
-  background: linear-gradient(135deg, var(--danger-bg), rgba(224, 85, 85, 0.1));
+  background: linear-gradient(135deg, var(--danger-bg), rgba(226, 55, 68, 0.06));
 }
 
 .gradient-critical {
-  background: linear-gradient(135deg, var(--critical-bg), rgba(255, 107, 107, 0.1));
+  background: linear-gradient(135deg, var(--critical-bg), rgba(176, 33, 47, 0.08));
 }
 
 .gradient-blue {
-  background: linear-gradient(135deg, rgba(46, 117, 182, 0.2), rgba(46, 117, 182, 0.05));
+  background: linear-gradient(135deg, rgba(226, 55, 68, 0.10), rgba(226, 55, 68, 0.03));
 }
 
 /* ===== SCORE RING ANIMATION ===== */
@@ -127,12 +125,12 @@ body {
 
 .btn-glow:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px -6px rgba(46, 117, 182, 0.5);
+  box-shadow: 0 8px 20px -6px rgba(226, 55, 68, 0.5);
 }
 
 .btn-glow:active {
   transform: translateY(1px);
-  box-shadow: 0 2px 10px -4px rgba(46, 117, 182, 0.4);
+  box-shadow: 0 2px 10px -4px rgba(226, 55, 68, 0.4);
 }
 
 .btn-glow::after {
@@ -145,7 +143,7 @@ body {
   background: linear-gradient(
     to right,
     transparent,
-    rgba(255, 255, 255, 0.15),
+    rgba(255, 255, 255, 0.35),
     transparent
   );
   transform: skewX(-20deg);
@@ -174,11 +172,11 @@ body {
 }
 
 @keyframes pulseDot {
-  0%, 100% { 
-    box-shadow: 0 0 0 0 rgba(46, 117, 182, 0.4);
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(226, 55, 68, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(46, 117, 182, 0);
+    box-shadow: 0 0 0 10px rgba(226, 55, 68, 0);
   }
 }
 
@@ -213,7 +211,7 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--blue-accent) !important;
-  box-shadow: 0 0 0 3px rgba(46, 117, 182, 0.2);
+  box-shadow: 0 0 0 3px rgba(226, 55, 68, 0.15);
 }
 
 /* ===== LOADING SHIMMER ===== */
@@ -229,9 +227,9 @@ textarea:focus {
 .loading-shimmer {
   background: linear-gradient(
     90deg,
-    var(--navy-card) 25%,
-    var(--navy-border) 50%,
-    var(--navy-card) 75%
+    #EFEFEF 25%,
+    #E2E2E2 50%,
+    #EFEFEF 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
@@ -262,9 +260,9 @@ textarea:focus {
 
 .tooltip {
   @apply absolute z-50 px-3 py-2 text-xs rounded-lg;
-  background: var(--navy-card);
+  background: var(--text-white);
   border: 1px solid var(--navy-border);
-  color: var(--text-muted);
+  color: #FFFFFF;
   opacity: 0;
   visibility: hidden;
   transform: translateY(5px);
@@ -280,28 +278,28 @@ textarea:focus {
   @apply px-3 py-1 rounded-full text-xs font-semibold;
   background: var(--safe-bg);
   color: var(--safe);
-  border: 1px solid rgba(76, 175, 130, 0.3);
+  border: 1px solid rgba(31, 164, 99, 0.3);
 }
 
 .badge-medium {
   @apply px-3 py-1 rounded-full text-xs font-semibold;
   background: var(--warn-bg);
   color: var(--warn);
-  border: 1px solid rgba(240, 160, 48, 0.3);
+  border: 1px solid rgba(232, 147, 43, 0.3);
 }
 
 .badge-high {
   @apply px-3 py-1 rounded-full text-xs font-semibold;
   background: var(--danger-bg);
   color: var(--danger);
-  border: 1px solid rgba(224, 85, 85, 0.3);
+  border: 1px solid rgba(226, 55, 68, 0.3);
 }
 
 .badge-critical {
   @apply px-3 py-1 rounded-full text-xs font-semibold;
   background: var(--critical-bg);
   color: var(--critical);
-  border: 1px solid rgba(255, 107, 107, 0.3);
+  border: 1px solid rgba(176, 33, 47, 0.3);
 }
 
 /* ===== ALERT NOTIFICATION DROPDOWN ===== */
@@ -313,13 +311,10 @@ textarea:focus {
   max-width: calc(100vw - 32px);
   border-radius: 16px;
   border: 1px solid var(--navy-border);
-  background: rgba(13, 27, 46, 0.98);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  box-shadow: 
-    0 20px 60px -15px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(46, 117, 182, 0.1),
-    0 0 30px -10px rgba(46, 117, 182, 0.15);
+  background: #FFFFFF;
+  box-shadow:
+    0 20px 60px -15px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
   z-index: 100;
   overflow: hidden;
 }
@@ -361,7 +356,7 @@ textarea:focus {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
-  
+
   .mobile-scroll::-webkit-scrollbar {
     display: none;
   }
