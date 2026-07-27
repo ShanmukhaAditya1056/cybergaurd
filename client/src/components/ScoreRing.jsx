@@ -8,9 +8,9 @@ const ScoreRing = ({ score = 0, size = 140, strokeWidth = 8, showLabel = true, a
 
   // Determine color based on score
   const getColor = () => {
-    if (displayScore >= 70) return '#4CAF82'; // safe
-    if (displayScore >= 40) return '#F0A030'; // warn
-    return '#E05555'; // danger
+    if (displayScore >= 70) return '#1FA463'; // safe
+    if (displayScore >= 40) return '#E8932B'; // warn
+    return '#E23744'; // danger
   };
 
   const getGlowColor = () => {
@@ -60,7 +60,7 @@ const ScoreRing = ({ score = 0, size = 140, strokeWidth = 8, showLabel = true, a
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="#1A3C5E"
+          stroke="#E6E6E6"
           strokeWidth={strokeWidth}
           opacity={0.4}
         />

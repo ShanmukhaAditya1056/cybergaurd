@@ -31,6 +31,7 @@ malware_permissions = joblib.load(os.path.join(MODELS_DIR, "malware_permissions.
 
 # SHAP explainers (initialized lazily)
 _malware_explainer = None
+_phishing_explainer = None
 
 print("[ML Service] All models loaded successfully!")
 
@@ -220,6 +221,16 @@ def get_malware_explainer():
         _malware_explainer = shap.TreeExplainer(malware_rf_model)
     return _malware_explainer
 
+
+def get_phishing_explainer():
+    """TreeExplainer on the GradientBoosting sub-model of the voting ensemble.
+    Gives real per-prediction SHAP values for the phishing feature model."""
+    global _phishing_explainer
+    if _phishing_explainer is None:
+        gb_model = phishing_model.named_estimators_['gb']
+        _phishing_explainer = shap.TreeExplainer(gb_model)
+    return _phishing_explainer
+
 # ============================================================
 # API Endpoints
 # ============================================================
@@ -266,28 +277,49 @@ async def predict_phishing(req: PhishingRequest):
     is_phishing = combined_proba[1] > 0.5
     confidence = round(float(max(combined_proba)) * 100, 1)
     
-    # Generate SHAP-like explanations from feature importance
-    shap_reasons = []
+    # Real per-prediction SHAP explanations from the GradientBoosting sub-model.
+    # SHAP value sign tells us whether each feature pushed the prediction toward
+    # phishing (positive) or safe (negative) for THIS specific URL.
     feature_vals = feature_df.iloc[0]
-    
-    # Get feature importances from the gradient boosting sub-model
-    gb_model = phishing_model.named_estimators_['gb']
-    importances = gb_model.feature_importances_
-    
-    # Build explanation
     feature_contributions = []
-    for i, (fname, fval) in enumerate(zip(phishing_features, feature_vals)):
-        if importances[i] > 0.01:
-            direction = "positive" if (is_phishing and fval > 0) or (not is_phishing and fval == 0) else "negative"
-            feature_contributions.append({
-                "feature": fname,
-                "score": round(float(importances[i] * 100), 1),
-                "value": float(fval),
-                "direction": direction,
-                "description": FEATURE_DESCRIPTIONS.get(fname, fname)
-            })
-    
-    # Sort by importance and take top 6
+    try:
+        explainer = get_phishing_explainer()
+        shap_values = explainer.shap_values(feature_df)
+        sv = np.asarray(shap_values)
+        # Binary GB returns shape (1, n_features); normalize to 1-D
+        if sv.ndim == 3:          # (n_classes, n_samples, n_features)
+            sv = sv[1]
+        sv_raw = sv.reshape(-1)[:len(phishing_features)]
+
+        # Normalize magnitudes to a relative 0-100 scale (GB SHAP values are
+        # log-odds contributions that can exceed 1, which would peg the UI bars).
+        max_abs = max((abs(float(v)) for v in sv_raw), default=0.0) or 1.0
+        for i, fname in enumerate(phishing_features):
+            val = float(sv_raw[i])
+            if abs(val) > 1e-4:
+                feature_contributions.append({
+                    "feature": fname,
+                    "score": round(abs(val) / max_abs * 100, 1),
+                    "value": float(feature_vals.iloc[i]),
+                    # positive SHAP -> pushed toward PHISHING, negative -> toward SAFE
+                    "direction": "positive" if val > 0 else "negative",
+                    "description": FEATURE_DESCRIPTIONS.get(fname, fname)
+                })
+    except Exception as e:
+        print(f"[SHAP Warning] phishing: {e}")
+        # Fallback: GB feature importances (not per-prediction, but never empty)
+        importances = phishing_model.named_estimators_['gb'].feature_importances_
+        for i, fname in enumerate(phishing_features):
+            if importances[i] > 0.01:
+                feature_contributions.append({
+                    "feature": fname,
+                    "score": round(float(importances[i] * 100), 1),
+                    "value": float(feature_vals.iloc[i]),
+                    "direction": "positive" if is_phishing else "negative",
+                    "description": FEATURE_DESCRIPTIONS.get(fname, fname)
+                })
+
+    # Sort by contribution magnitude and take top 6
     feature_contributions.sort(key=lambda x: x['score'], reverse=True)
     shap_reasons = feature_contributions[:6]
     
@@ -324,11 +356,60 @@ async def predict_malware(req: MalwareRequest):
     # Convert permissions to feature vector
     perm_vector = [1 if p in req.permissions else 0 for p in malware_permissions]
     perm_df = pd.DataFrame([perm_vector], columns=malware_permissions)
-    
-    # Prediction
+
+    # Model prediction
     proba = malware_model.predict_proba(perm_df)[0]
-    risk_score = round(float(proba[1]) * 100)
-    
+    model_score = round(float(proba[1]) * 100)
+
+    # ----------------------------------------------------------------
+    # Rule-based risk floor.
+    # The model is trained on synthetic profiles where malware samples
+    # carry many permissions, so it correlates permission COUNT with
+    # maliciousness and can under-score a short-but-dangerous set
+    # (e.g. SEND_SMS + BIND_DEVICE_ADMIN + SYSTEM_ALERT_WINDOW).
+    # We floor the score on individually dangerous permissions and on
+    # known dangerous combinations so those can never come back as LOW.
+    # ----------------------------------------------------------------
+    perms_set = set(req.permissions)
+    rule_floor = 0
+
+    # Individually high-risk permissions
+    dangerous_perms = {
+        'SEND_SMS': 45, 'READ_SMS': 40, 'RECEIVE_SMS': 40,
+        'BIND_DEVICE_ADMIN': 55, 'SYSTEM_ALERT_WINDOW': 35,
+        'INSTALL_PACKAGES': 40, 'REQUEST_INSTALL_PACKAGES': 35,
+        'DELETE_PACKAGES': 40, 'PROCESS_OUTGOING_CALLS': 35,
+        'READ_CALL_LOG': 25, 'USE_CREDENTIALS': 25,
+    }
+    for perm, floor in dangerous_perms.items():
+        if perm in perms_set:
+            rule_floor = max(rule_floor, floor)
+
+    # Known dangerous permission combinations (description, risk floor).
+    # Each present combo both raises the risk floor and is surfaced to the
+    # client as a "GNN-style" relationship finding.
+    combo_rules = [
+        ({'SEND_SMS', 'READ_CONTACTS'}, 70,
+         "SMS + Contacts: Can spread via SMS to all contacts"),
+        ({'CAMERA', 'RECORD_AUDIO', 'INTERNET'}, 75,
+         "Camera + Mic + Internet: Potential surveillance capability"),
+        ({'SYSTEM_ALERT_WINDOW', 'BIND_DEVICE_ADMIN'}, 90,
+         "Overlay + Admin: Ransomware pattern detected"),
+        ({'READ_SMS', 'RECEIVE_SMS', 'INTERNET'}, 85,
+         "SMS interception + Internet: OTP theft capability"),
+        ({'RECEIVE_BOOT_COMPLETED', 'INSTALL_PACKAGES'}, 80,
+         "Auto-start + Install: Self-propagation capability"),
+        ({'GET_ACCOUNTS', 'USE_CREDENTIALS'}, 70,
+         "Account access + Credentials: Identity theft risk"),
+    ]
+    dangerous_combos = []
+    for required, floor, description in combo_rules:
+        if required.issubset(perms_set):
+            dangerous_combos.append(description)
+            rule_floor = max(rule_floor, floor)
+
+    risk_score = max(model_score, rule_floor)
+
     # Risk level
     if risk_score >= 80:
         risk_level = "CRITICAL"
@@ -386,23 +467,7 @@ async def predict_malware(req: MalwareRequest):
         shap_reasons.sort(key=lambda x: x['score'], reverse=True)
         shap_reasons = shap_reasons[:8]
     
-    # GNN-style analysis note
-    dangerous_combos = []
-    perms_set = set(req.permissions)
-    
-    if 'SEND_SMS' in perms_set and 'READ_CONTACTS' in perms_set:
-        dangerous_combos.append("SMS + Contacts: Can spread via SMS to all contacts")
-    if 'CAMERA' in perms_set and 'RECORD_AUDIO' in perms_set and 'INTERNET' in perms_set:
-        dangerous_combos.append("Camera + Mic + Internet: Potential surveillance capability")
-    if 'SYSTEM_ALERT_WINDOW' in perms_set and 'BIND_DEVICE_ADMIN' in perms_set:
-        dangerous_combos.append("Overlay + Admin: Ransomware pattern detected")
-    if 'READ_SMS' in perms_set and 'RECEIVE_SMS' in perms_set and 'INTERNET' in perms_set:
-        dangerous_combos.append("SMS interception + Internet: OTP theft capability")
-    if 'RECEIVE_BOOT_COMPLETED' in perms_set and 'INSTALL_PACKAGES' in perms_set:
-        dangerous_combos.append("Auto-start + Install: Self-propagation capability")
-    if 'GET_ACCOUNTS' in perms_set and 'USE_CREDENTIALS' in perms_set:
-        dangerous_combos.append("Account access + Credentials: Identity theft risk")
-    
+    # GNN-style analysis note (dangerous_combos detected above)
     gnn_note = None
     if dangerous_combos:
         gnn_note = "Permission relationship analysis: " + "; ".join(dangerous_combos[:3])

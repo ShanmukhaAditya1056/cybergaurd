@@ -108,7 +108,7 @@ const Navbar = () => {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-navy-border"
-      style={{ background: 'rgba(13, 27, 46, 0.95)', backdropFilter: 'blur(20px)' }}>
+      style={{ background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(20px)' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -288,7 +288,7 @@ const Navbar = () => {
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
             className="lg:hidden border-t border-navy-border overflow-hidden"
-            style={{ background: 'rgba(13, 27, 46, 0.98)' }}
+            style={{ background: 'rgba(255, 255, 255, 0.98)' }}
           >
             <div className="px-4 py-3 space-y-1">
               {navItems.map((item) => (

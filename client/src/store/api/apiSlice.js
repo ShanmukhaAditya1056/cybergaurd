@@ -1,6 +1,30 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { handleDemoRequest } from './demoData';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const DEMO_MODE = process.env.REACT_APP_DEMO_MODE === 'true';
+
+/**
+ * baseQuery selector.
+ * In demo mode (the GitHub Pages deployment) there is no reachable backend, so
+ * every request is served locally by a deterministic mock that returns the same
+ * `{ success, data }` envelopes as the real controllers. This keeps the app
+ * fully functional as a static site and lets Selenium run meaningful E2E tests.
+ * Otherwise requests hit the real API via fetchBaseQuery.
+ */
+const realBaseQuery = fetchBaseQuery({ baseUrl: API_URL });
+
+const demoBaseQuery = async (args) => {
+  // Small simulated latency so loading/spinner states are exercised in E2E.
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  try {
+    return handleDemoRequest(args);
+  } catch (err) {
+    return { error: { status: 500, data: { success: false, message: err.message } } };
+  }
+};
+
+const baseQuery = DEMO_MODE ? demoBaseQuery : realBaseQuery;
 
 /**
  * CyberGuard AI — RTK Query API Definition
@@ -9,7 +33,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
  */
 export const apiSlice = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ baseUrl: API_URL }),
+  baseQuery,
   tagTypes: [
     'SecurityScore',
     'DashboardStats',
@@ -74,6 +98,17 @@ export const apiSlice = createApi({
     getMalwareApps: builder.query({
       query: () => '/malware/apps',
       providesTags: ['MalwareScan'],
+      transformResponse: (response) => response.data,
+    }),
+
+    // Analyze an app's permission set with the ML permission model
+    analyzeApp: builder.mutation({
+      query: ({ appName, permissions }) => ({
+        url: '/malware/analyze',
+        method: 'POST',
+        body: { appName, permissions },
+      }),
+      invalidatesTags: ['SecurityScore', 'DashboardStats', 'MalwareScan', 'Alerts'],
       transformResponse: (response) => response.data,
     }),
 
@@ -244,6 +279,7 @@ export const {
   // Malware / Device Scanner
   useScanMalwareMutation,
   useGetMalwareAppsQuery,
+  useAnalyzeAppMutation,
   useClearMalwareHistoryMutation,
   // Phishing
   useScanPhishingMutation,

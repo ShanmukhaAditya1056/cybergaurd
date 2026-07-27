@@ -190,31 +190,31 @@ const Dashboard = () => {
                   <AreaChart data={history}>
                     <defs>
                       <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2E75B6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#2E75B6" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#E23744" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#E23744" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <XAxis
                       dataKey="day"
-                      tick={{ fill: '#4A7AA8', fontSize: 12 }}
-                      axisLine={{ stroke: '#1A3C5E' }}
+                      tick={{ fill: '#9A9A9A', fontSize: 12 }}
+                      axisLine={{ stroke: '#E6E6E6' }}
                       tickLine={false}
                     />
                     <YAxis
                       domain={[0, 100]}
-                      tick={{ fill: '#4A7AA8', fontSize: 12 }}
-                      axisLine={{ stroke: '#1A3C5E' }}
+                      tick={{ fill: '#9A9A9A', fontSize: 12 }}
+                      axisLine={{ stroke: '#E6E6E6' }}
                       tickLine={false}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Area
                       type="monotone"
                       dataKey="score"
-                      stroke="#2E75B6"
+                      stroke="#E23744"
                       strokeWidth={2}
                       fill="url(#scoreGradient)"
-                      dot={{ fill: '#2E75B6', strokeWidth: 0, r: 4 }}
-                      activeDot={{ fill: '#2E75B6', strokeWidth: 2, stroke: '#E8F0FA', r: 6 }}
+                      dot={{ fill: '#E23744', strokeWidth: 0, r: 4 }}
+                      activeDot={{ fill: '#E23744', strokeWidth: 2, stroke: '#1C1C1C', r: 6 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>

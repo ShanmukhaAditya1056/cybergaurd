@@ -26,10 +26,10 @@ const PhishingScanner = () => {
   const handleClearHistory = () => {
     toast((t) => (
       <div className="flex flex-col gap-3 max-w-sm">
-        <p className="text-sm font-medium" style={{ color: '#E8F0FA' }}>🗑️ Delete all phishing scan history?</p>
-        <p className="text-xs" style={{ color: '#8BA4C2' }}>This action cannot be undone.</p>
+        <p className="text-sm font-medium" style={{ color: '#1C1C1C' }}>🗑️ Delete all phishing scan history?</p>
+        <p className="text-xs" style={{ color: '#5C5C5C' }}>This action cannot be undone.</p>
         <div className="flex gap-2 justify-end mt-1">
-          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all" style={{ border: '1px solid #1A3C5E', color: '#8BA4C2' }}>Cancel</button>
+          <button onClick={() => toast.dismiss(t.id)} className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all" style={{ border: '1px solid #E6E6E6', color: '#5C5C5C' }}>Cancel</button>
           <button onClick={async () => { toast.dismiss(t.id); try { await triggerClearHistory().unwrap(); toast.success('🧹 Phishing history cleared successfully'); } catch { toast.error('Failed to clear phishing history'); } }} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-all">Yes, Delete</button>
         </div>
       </div>
